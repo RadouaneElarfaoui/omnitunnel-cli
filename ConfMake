@@ -1,0 +1,11 @@
+#!/bin/sh
+
+cat << EOF > configFile
+Host host1
+    HostName $1
+    User $2
+    PubkeyAcceptedKeyTypes +ssh-rsa,ssh-ed25519,ecdsa-sha2-nistp256,rsa-sha2-256,rsa-sha2-512
+    HostKeyAlgorithms +ssh-rsa,ssh-ed25519,ecdsa-sha2-nistp256,rsa-sha2-256,rsa-sha2-512
+EOF
+
+chmod 600 configFile

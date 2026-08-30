@@ -1,0 +1,33 @@
+{
+  "omni_format": "1.0",
+  "software": "OmniTunnel CLI",
+  "profile_name": "Example_Profile",
+  "created_at": "2026-08-30T20:29:23.891255+00:00",
+  "note": "Sample template profile with dummy credentials",
+  "is_encrypted": false,
+  "config": {
+    "mode": {
+      "connection_mode": "3",
+      "auto_replace": "y"
+    },
+    "Payload": {
+      "payload": "GET / HTTP/1.1[crlf]Host: [host][crlf]Connection: Upgrade[crlf]Upgrade: websocket[crlf][crlf]",
+      "proxyip": "proxy.example.com",
+      "proxyport": "443"
+    },
+    "ssh": {
+      "host": "vps.example.com",
+      "port": "443",
+      "username": "your_username",
+      "password": "your_password",
+      "enable_compression": "n",
+      "auth_methode": "password"
+    },
+    "sni": {
+      "server_name": "vps.example.com"
+    },
+    "engine": {
+      "engine_mode": "singbox"
+    }
+  }
+}

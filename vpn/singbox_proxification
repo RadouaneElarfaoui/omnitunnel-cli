@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# Sing-Box Proxification Launcher for OmniTunnel CLI
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export PATH="$PROJECT_DIR/bin:$PATH"
+
+SINGBOX_BIN="$(python3 -c 'import sys; sys.path.insert(0, "'"$PROJECT_DIR"'"); from src.singbox_adapter import find_singbox_binary; print(find_singbox_binary() or "")')"
+
+if [ -z "$SINGBOX_BIN" ]; then
+    echo "✕ Warning: sing-box binary not found. Falling back to legacy redsocks."
+    exec bash "$PROJECT_DIR/vpn/proxification"
+    exit 1
+fi
+
+CONFIG_FILE="$PROJECT_DIR/cfgs/singbox_config.json"
+
+# Generate fresh sing-box JSON configuration
+python3 -c "
+import sys, os
+sys.path.insert(0, '$PROJECT_DIR')
+import configparser
+from src.singbox_adapter import generate_singbox_config, save_singbox_config
+
+config = configparser.ConfigParser()
+config.read('$PROJECT_DIR/cfgs/settings.ini')
+mode = config.get('mode', 'connection_mode', fallback='0')
+
+if mode == 'v2ray' and config.has_option('v2ray', 'v2ray_config'):
+    v2ray_cfg_path = config.get('v2ray', 'v2ray_config')
+    if os.path.exists(v2ray_cfg_path):
+        import shutil
+        shutil.copyfile(v2ray_cfg_path, '$CONFIG_FILE')
+    else:
+        sb_cfg = generate_singbox_config(config, socks_port=1080)
+        save_singbox_config(sb_cfg, '$CONFIG_FILE')
+else:
+    sb_cfg = generate_singbox_config(config, socks_port=1080)
+    save_singbox_config(sb_cfg, '$CONFIG_FILE')
+"
+
+echo "✔ Starting sing-box High-Performance TUN Engine..."
+exec "$SINGBOX_BIN" run -c "$CONFIG_FILE" 2>&1 | python3 -c "
+import sys
+sys.path.insert(0, '$PROJECT_DIR')
+from src.logger import log_singbox
+for line in sys.stdin:
+    l = line.strip()
+    if l:
+        log_singbox(l)
+"
