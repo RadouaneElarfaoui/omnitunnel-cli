@@ -2,7 +2,7 @@
 
 # OmniTunnel CLI (v1.1.0)
 
-[![GitHub license](https://img.shields.io/github/license/RadouaneElarfaoui/http-custom-cli?style=flat-square)](LICENSE)
+[![GitHub license](https://img.shields.io/github/license/RadouaneElarfaoui/omnitunnel-cli?style=flat-square)](LICENSE)
 [![Platform Compatibility](https://img.shields.io/badge/platform-Ubuntu%20%7C%20Debian%20%7C%20Termux-blue?style=flat-square)](#المتطلبات-والتثبيت)
 
 **OmniTunnel CLI** هو عميل VPN يعمل عبر سطر الأوامر ويعتمد على أنفاق SSH قوية، مصمم لتجاوز قيود الشبكة وتحسين أمان اتصالك على أنظمة **Linux (Ubuntu/Debian)** و **Android (Termux)**.
@@ -40,8 +40,8 @@ pip install certifi
 
 ### 3. تحميل المشروع
 ```bash
-git clone https://github.com/RadouaneElarfaoui/http-custom-cli.git
-cd http-custom-cli
+git clone https://github.com/RadouaneElarfaoui/omnitunnel-cli.git
+cd omnitunnel-cli
 ```
 
 ---

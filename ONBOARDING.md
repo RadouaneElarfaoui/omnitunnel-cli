@@ -20,7 +20,7 @@ Top MCP Servers:
 ## Your Setup Checklist
 
 ### Codebases
-- [ ] http-custom-cli — https://github.com/radouaneelarfaoui/http-custom-cli
+- [ ] omnitunnel-cli — https://github.com/RadouaneElarfaoui/omnitunnel-cli
 
 ### MCP Servers to Activate
 _No custom MCP servers required for this codebase yet._
