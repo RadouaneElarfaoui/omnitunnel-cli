@@ -26,6 +26,7 @@ C_RESET = '\033[0m'
 C_BOLD = '\033[1m'
 
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cfgs', 'settings.ini')
+CONFIG_EXAMPLE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cfgs', 'settings.ot.example')
 SAVED_CONFIGS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cfgs', 'saved')
 
 MODE_NAMES = {
@@ -409,6 +410,12 @@ def clear_screen():
 
 def read_config():
     config = configparser.ConfigParser()
+    if not os.path.exists(CONFIG_PATH) and os.path.exists(CONFIG_EXAMPLE_PATH):
+        try:
+            cfg_dict, _ = import_profile_from_omni(CONFIG_EXAMPLE_PATH)
+            save_omni_to_ini_file(cfg_dict, CONFIG_PATH)
+        except Exception:
+            pass
     config.read(CONFIG_PATH)
     return config
 
