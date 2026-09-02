@@ -20,10 +20,10 @@
 
 ```bash
 # Debian/Ubuntu
-sudo apt install -y git openssh-client sshpass netcat-openbsd corkscrew screen python3 python3-pip python3-certifi sing-box
+sudo apt install -y openssh-client sshpass netcat-openbsd corkscrew screen python3 python3-certifi sing-box
 
 # Termux (Android)
-pkg install -y git openssh sshpass netcat-openbsd corkscrew screen python3
+pkg install -y openssh sshpass netcat-openbsd corkscrew screen python3
 pip install certifi
 
 git clone https://github.com/RadouaneElarfaoui/omnitunnel-cli.git
