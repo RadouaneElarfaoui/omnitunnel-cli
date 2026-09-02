@@ -20,7 +20,14 @@ mkdir -p "$PROJECT_DIR/bin"
 # Add local bin to PATH
 export PATH="$PROJECT_DIR/bin:$PATH"
 
-# Compile and check redsocks
+# Engine mode (singbox = default, no compile needed)
+engine=$(grep "engine_mode" "$PROJECT_DIR/cfgs/settings.ini" | awk '{print $3}' | tr -d '\r')
+
+if [ "$engine" != "redsocks" ]; then
+    echo -e "${GREEN}Engine: Sing-Box (no compilation required)${SCOLOR}"
+else
+
+# Compile and check redsocks (legacy engine only)
 if command -v redsocks >/dev/null; then
     echo -e "${GREEN}Redsocks is available${SCOLOR}"
 else
@@ -43,7 +50,7 @@ else
     fi
 fi
 
-# Compile and check dns2socks
+# Compile and check dns2socks (legacy engine only)
 if command -v dns2socks >/dev/null; then
     echo -e "${GREEN}Dns2socks is available${SCOLOR}"
 else
@@ -64,6 +71,8 @@ else
         echo -e "${RED}Error: libs/dns2socks.zip not found.${SCOLOR}"
         exit 1
     fi
+fi
+
 fi
 
 clear
