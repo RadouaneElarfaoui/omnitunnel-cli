@@ -46,22 +46,13 @@ cd omnitunnel-cli
 
 ---
 
-## 🚨 Límites de Privilegios de Root y Variables de Entorno
-
-Al iniciar la VPN, los privilegios de superusuario (root) son indispensables:
-
-1.  **Restablecimiento de `$PATH` con `sudo`**: Por defecto, `sudo` restringe las rutas de ejecución de comandos (directiva `secure_path` en `/etc/sudoers`). Para evitar que el script de inicio no encuentre sus utilidades locales (`bin/redsocks`, `bin/dns2socks`), ejecute siempre el entorno desde la raíz del proyecto.
-2.  **Derechos de administración requeridos (Root)**: La orquestación de los flujos de enrutamiento global, la apertura de descriptores de bajo nivel y la configuración de las reglas NAT de iptables requieren privilegios de superusuario (Root). En Android (Termux), el dispositivo debe estar obligatoriamente rooteado.
-
----
-
 ## 🖥 Uso (Método Recomendado - Modo de Menú CLI)
 
 El script interactivo de Python **`menu.py`** le permite configurar e iniciar su conexión VPN con una interfaz visual animada.
 
 ```bash
 chmod +x menu.py runvpn.sh
-sudo ./menu.py
+./menu.py
 ```
 
 ### Editor y Gestión de Perfiles

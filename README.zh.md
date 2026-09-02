@@ -46,22 +46,13 @@ cd omnitunnel-cli
 
 ---
 
-## 🚨 Root 权限限制与环境变量
-
-运行 VPN 时，超级用户 (root) 权限是必不可少的：
-
-1.  **使用 `sudo` 重置 `$PATH`**：默认情况下，`sudo` 会限制命令执行路径（即 `/etc/sudoers` 中的 `secure_path` 指令）。为了防止启动脚本找不到您的本地实用程序（如 `bin/redsocks`、`bin/dns2socks`），请始终在项目的根目录下启动环境。
-2.  **需要管理员权限 (Root)**：编排全局路由流量、打开低级描述符以及配置 iptables NAT 规则均需要超级用户 (Root) 权限。在 Android (Termux) 上，设备必须已获取 Root 权限。
-
----
-
 ## 🖥 使用方法（推荐方法 - CLI 菜单模式）
 
 交互式 Python 脚本 **`menu.py`** 允许您通过带动画的视觉界面配置并启动 VPN 连接。
 
 ```bash
 chmod +x menu.py runvpn.sh
-sudo ./menu.py
+./menu.py
 ```
 
 ### 配置文件编辑与管理

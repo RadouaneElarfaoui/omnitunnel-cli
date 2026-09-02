@@ -35,6 +35,16 @@ MODE_NAMES = {
     'v2ray': 'V2Ray / Xray / Sing-Box Profile'
 }
 
+def is_root():
+    return os.geteuid() == 0
+
+def run_as_root(cmd):
+    """Run a command that requires root. If already root, run directly;
+    otherwise elevate via sudo. Returns the subprocess.CompletedProcess."""
+    if is_root():
+        return subprocess.run(cmd)
+    return subprocess.run(["sudo", *cmd])
+
 def ensure_saved_configs_dir():
     if not os.path.exists(SAVED_CONFIGS_DIR):
         try:
@@ -469,7 +479,7 @@ def edit_engine_mode(config):
             break
         elif choice == '3':
             print(f"\n{C_YELLOW}Running TCP BBR Optimization script...{C_RESET}")
-            subprocess.run(["sudo", "bash", "vpn/tcp_bbr.sh"])
+            run_as_root(["bash", "vpn/tcp_bbr.sh"])
             input("\nPress Enter to continue...")
         elif choice == 'B':
             break
@@ -662,7 +672,7 @@ def start_vpn():
     print(f"{C_GREEN}Starting VPN... (Press Ctrl+C to stop){C_RESET}\n")
     try:
         # Run runvpn.sh and stream output
-        subprocess.run(["sudo", "bash", "runvpn.sh"])
+        run_as_root(["bash", "runvpn.sh"])
     except KeyboardInterrupt:
         print(f"\n{C_RED}VPN process terminated by user.{C_RESET}")
     input("\nPress Enter to return to menu...")
