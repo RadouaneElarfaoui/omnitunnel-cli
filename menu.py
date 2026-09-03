@@ -679,8 +679,8 @@ def start_vpn():
     clear_screen()
     print(f"{C_GREEN}Starting VPN... (Press Ctrl+C to stop){C_RESET}\n")
     try:
-        # Run runvpn.sh and stream output
-        run_as_root(["bash", "runvpn.sh"])
+        # Run runvpn.sh as the current user; only the engine step elevates via sudo
+        subprocess.run(["bash", "runvpn.sh"])
     except KeyboardInterrupt:
         print(f"\n{C_RED}VPN process terminated by user.{C_RESET}")
     input("\nPress Enter to return to menu...")

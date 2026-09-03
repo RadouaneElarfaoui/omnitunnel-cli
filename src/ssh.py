@@ -93,9 +93,9 @@ class sshRunn:
 
                     if self.connected:
                         if getattr(self, 'engine_mode', 'singbox') == 'singbox':
-                            os.system("bash vpn/singbox_proxification > /dev/null &")
+                            os.system("sudo -E bash vpn/singbox_proxification > /dev/null &")
                         else:
-                            os.system("bash vpn/proxification > /dev/null &")
+                            os.system("sudo -E bash vpn/proxification > /dev/null &")
                         self.connected=False
 
                 # ssh process ended; if we never connected and it failed, show why

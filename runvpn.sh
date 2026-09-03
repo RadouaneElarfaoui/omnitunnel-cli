@@ -8,12 +8,6 @@ SCOLOR='\033[0m'
 # Get the absolute path of the project root
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# VPN requires root for iptables/TUN. Re-exec via sudo if not already root.
-if [ "$EUID" -ne 0 ]; then
-    echo -e "${YELLOW}runvpn.sh requires root privileges. Elevating via sudo...${SCOLOR}"
-    exec sudo bash "$0" "$@"
-fi
-
 # Ensure local bin directory exists
 mkdir -p "$PROJECT_DIR/bin"
 
@@ -116,7 +110,7 @@ function connect() {
 
 if [ "$mode" = "v2ray" ]; then
     echo -e "${GREEN}[+] Launching Sing-Box TUN Engine with V2Ray/Xray Profile...${SCOLOR}"
-    exec bash "$PROJECT_DIR/vpn/singbox_proxification"
+    exec sudo -E bash "$PROJECT_DIR/vpn/singbox_proxification"
     exit 0
 fi
 
