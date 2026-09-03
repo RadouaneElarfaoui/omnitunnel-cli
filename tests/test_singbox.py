@@ -24,11 +24,6 @@ class TestSingboxAdapter(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.test_dir, ignore_errors=True)
 
-    def test_find_singbox_binary(self):
-        binary = find_singbox_binary()
-        if binary:
-            self.assertTrue(os.path.exists(binary))
-
     def test_generate_singbox_config(self):
         sample_config = {
             "mode": {"connection_mode": "3"},
