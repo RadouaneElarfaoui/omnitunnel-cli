@@ -540,21 +540,33 @@ def menu_start_vpn(mode):
     input("\nPress Enter to return to menu...")
 
 
+def menu_edit(mode):
+    options = [
+        ('1', 'Connection Mode', lambda: (menu_edit_connection_mode(mode), STATUS_STAY)[1]),
+        ('2', 'SSH', lambda: (menu_edit_ssh(mode), STATUS_STAY)[1]),
+        ('3', 'Payload / Proxy', lambda: (menu_edit_payload(mode), STATUS_STAY)[1]),
+        ('4', 'SNI', lambda: (menu_edit_sni(mode), STATUS_STAY)[1]),
+        ('5', 'Engine', lambda: (menu_edit_engine(mode), STATUS_STAY)[1]),
+        ('B', 'Back', STATUS_BREAK),
+    ]
+
+    def render():
+        print_current_status(read_config())
+
+    run_menu("Edit", options, status_render=render, mode=mode)
+
+
 # ---------------------------------------------------------------------------
 # Main menu
 # ---------------------------------------------------------------------------
 def menu_main(mode):
     while True:
         options = [
-            ('1', 'Edit Connection Mode', lambda: (menu_edit_connection_mode(mode), STATUS_STAY)[1]),
-            ('2', 'Edit SSH Parameters', lambda: (menu_edit_ssh(mode), STATUS_STAY)[1]),
-            ('3', 'Edit Payload/Proxy Parameters', lambda: (menu_edit_payload(mode), STATUS_STAY)[1]),
-            ('4', 'Edit SNI Server Name', lambda: (menu_edit_sni(mode), STATUS_STAY)[1]),
-            ('5', 'Engine & Optimizations (Sing-Box / BBR)', lambda: (menu_edit_engine(mode), STATUS_STAY)[1]),
-            ('6', 'Manage Configurations (.ot / V2Ray)', lambda: (menu_manage_configs(mode), STATUS_STAY)[1]),
-            ('7', 'View Session Logs (logs/session.log)', lambda: (menu_view_logs(mode), STATUS_STAY)[1]),
-            ('8', 'RUN VPN', lambda: (menu_start_vpn(mode), STATUS_STAY)[1]),
-            ('9', 'Exit', lambda: (_main_exit_flag.__setitem__(0, True) or STATUS_BREAK)),
+            ('1', 'Run VPN', lambda: (menu_start_vpn(mode), STATUS_STAY)[1]),
+            ('2', 'Edit', lambda: (menu_edit(mode), STATUS_STAY)[1]),
+            ('3', 'Profiles', lambda: (menu_manage_configs(mode), STATUS_STAY)[1]),
+            ('4', 'Logs', lambda: (menu_view_logs(mode), STATUS_STAY)[1]),
+            ('5', 'Exit', lambda: (_main_exit_flag.__setitem__(0, True) or STATUS_BREAK)),
         ]
 
         def render():
