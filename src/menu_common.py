@@ -28,10 +28,7 @@ C_RESET = '\033[0m'
 C_BOLD = '\033[1m'
 C_REVERSE = '\033[7m'
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CONFIG_PATH = os.path.join(BASE_DIR, 'cfgs', 'settings.ini')
-CONFIG_EXAMPLE_PATH = os.path.join(BASE_DIR, 'cfgs', 'settings.ot.example')
-SAVED_CONFIGS_DIR = os.path.join(BASE_DIR, 'cfgs', 'saved')
+from src.paths import PROJECT_DIR as BASE_DIR, CONFIG_PATH, CONFIG_EXAMPLE_PATH, SAVED_CONFIGS_DIR
 
 MODE_NAMES = {
     '0': 'SSH (direct)',

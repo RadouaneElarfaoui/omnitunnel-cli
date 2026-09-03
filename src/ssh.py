@@ -8,6 +8,7 @@ import random
 import shutil
 import threading
 from src.logger import log_ssh, log_singbox, log_tunnel, log_error
+from src.paths import PROJECT_DIR, CONFIG_PATH
 
 
 # colors
@@ -22,7 +23,7 @@ class sshRunn:
         self.inject_host = '127.0.0.1'
         self.inject_port = inject_port
         self.connected = None
-        self.path = os.path.abspath(os.path.curdir)
+        self.path = PROJECT_DIR
 
     def LogServeMsg(self,lines):
         slicemsg = lines[lines.index("debug1: SSH2_MSG_SERVICE_ACCEPT received\r\n") : lines.index('debug1: Next authentication method: publickey\r\n')]
@@ -50,10 +51,10 @@ class sshRunn:
                 else:
                     compress =""
                 if str(auth_methode) == "publickey":  
-                    sshcmd = f"ssh -i {password} cfgs/publickey.pem {proxycmd} useless@{host}"
+                    sshcmd = f"ssh -i {password} {os.path.join(PROJECT_DIR, 'cfgs/publickey.pem')} {proxycmd} useless@{host}"
                     ssh_env = os.environ.copy()
                 else:
-                    sshcmd = f"sshpass -e ssh {proxycmd} -F configFile host1"
+                    sshcmd = f"sshpass -e ssh {proxycmd} -F {os.path.join(PROJECT_DIR, 'configFile')} host1"
                     ssh_env = {**os.environ, 'SSHPASS': password}
                 perf_opts = "-o Ciphers=chacha20-poly1305@openssh.com,aes128-gcm@openssh.com,aes256-gcm@openssh.com"
                 response = subprocess.Popen(
@@ -108,15 +109,15 @@ class sshRunn:
             except Exception as error:
                 print(error)
     def createConf(self,host,user):
-            _=subprocess.run(["sh","ConfMake",host,user])
+            _=subprocess.run(["sh", os.path.join(PROJECT_DIR, "ConfMake"),host,user])
 
     def _launch_engine(self):
         engine = getattr(self, 'engine_mode', 'singbox')
         if engine == 'singbox':
-            script = "vpn/singbox_proxification"
+            script = os.path.join(PROJECT_DIR, "vpn/singbox_proxification")
             logger = log_singbox
         else:
-            script = "vpn/proxification"
+            script = os.path.join(PROJECT_DIR, "vpn/proxification")
             logger = log_tunnel
         self.logs(f"Launching {engine} engine...")
         # Engine needs root (iptables/TUN), so elevate via sudo; run in background
@@ -178,9 +179,8 @@ class sshRunn:
 
     def main(self):
 
-        currentdir = os.path.abspath(os.path.curdir)
         config = configparser.ConfigParser()
-        with open(f'{currentdir}/cfgs/settings.ini') as _cfg_fh:
+        with open(CONFIG_PATH) as _cfg_fh:
             config.read_file(_cfg_fh)	
         host = config['ssh']['host']
         mode = config['mode']['connection_mode']

@@ -12,10 +12,11 @@ def find_singbox_binary():
     if binary_in_path:
         return binary_in_path
 
+    from src.paths import SINGBOX_BIN_LOCAL
     possible_paths = [
         "/usr/bin/sing-box",
         "/usr/local/bin/sing-box",
-        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "bin", "sing-box")
+        SINGBOX_BIN_LOCAL
     ]
     for path in possible_paths:
         if os.path.exists(path) and os.access(path, os.X_OK):

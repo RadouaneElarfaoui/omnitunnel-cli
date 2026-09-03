@@ -4,10 +4,7 @@ import sys
 import re
 import datetime
 
-# Base directory paths
-PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-LOGS_DIR = os.path.join(PROJECT_DIR, "logs")
-SESSION_LOG_PATH = os.path.join(LOGS_DIR, "session.log")
+from src.paths import PROJECT_DIR, LOGS_DIR, SESSION_LOG_PATH
 
 # Regex pattern to match ANSI escape codes (colors, formatting)
 ANSI_ESCAPE_RE = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')

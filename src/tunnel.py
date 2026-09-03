@@ -4,6 +4,7 @@ import select
 import configparser,sys,os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import ssl,certifi
+from src.paths import CONFIG_PATH
 from .pidkill import handler
 from .inject import injector
 from src.logger import log_tunnel
@@ -19,7 +20,7 @@ Buffer_lenght = 1024 * 4
 class Tun(injector):
 	def __init__(self):
 		self.LISTEN_PORT = int(sys.argv[1])
-		self.configfile = "./cfgs/settings.ini"
+		self.configfile = CONFIG_PATH
 
 	def conf(self):
 		config = configparser.ConfigParser()
