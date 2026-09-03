@@ -140,7 +140,7 @@ class sshRunn:
     def create_connection(self,host,port,user,password,mode,auth_methode ):
         try:
             regx = r'[a-zA-Z0-9_]'
-            if mode == '0' or not (self.proxy[0] and self.proxy[0].strip()):
+            if mode in ('0', '2') or not (self.proxy[0] and self.proxy[0].strip()):
                 remote_addr = (host, port)
             else:
                 remote_addr = self.proxy

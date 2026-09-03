@@ -76,12 +76,17 @@ class Tun(injector):
 			request = client.recv(1024*4).decode()
 			host = self.gethost(config)
 			port = request.split(':')[-1].split()[0]
-			try:
-				proxip=self.proxy(config)[0] 
-				proxport=self.proxy(config)[1]
-			except ValueError:
+			if mode == 2:
+				# SNI-only: direct TLS to SSH server (ignore Payload proxy)
 				proxip = host
 				proxport = port
+			else:
+				try:
+					proxip=self.proxy(config)[0] 
+					proxport=self.proxy(config)[1]
+				except (ValueError, KeyError):
+					proxip = host
+					proxport = port
 			sockt = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 			sockt.settimeout(10)
 			sockt.connect((proxip,int(proxport)))
