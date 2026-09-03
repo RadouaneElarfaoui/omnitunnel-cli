@@ -8,7 +8,7 @@
 **OmniTunnel CLI** is a command-line VPN client based on SSH tunnels, V2Ray/Xray protocols, and HTTP payload injection, designed to bypass network restrictions under **Linux (Ubuntu/Debian)** and **Android (Termux)**.
 
 - **V2Ray / Xray / Sing-Box**: import share links (`vless://`, `vmess://`, `trojan://`, `ss://`, `hy2://`).
-- **Sing-Box TUN Engine**: high-performance `tun0` with DoH caching.
+- **Sing-Box TUN Engine**: `tun0` with DoH caching.
 - **Encrypted `.ot` profiles**: export/import with PBKDF2 password protection.
 - **Kernel TCP BBR** optimization.
 
@@ -20,7 +20,10 @@
 
 ```bash
 # Debian/Ubuntu
-sudo apt install -y openssh-client sshpass netcat-openbsd corkscrew screen python3 python3-certifi sing-box
+sudo apt install -y openssh-client sshpass netcat-openbsd corkscrew screen python3 python3-certifi
+
+# Sing-Box engine
+cd /tmp && wget https://github.com/SagerNet/sing-box/releases/download/v1.14.0/sing-box_1.14.0_linux_amd64.deb && sudo apt install -y ./sing-box_1.14.0_linux_amd64.deb
 
 # Termux (Android)
 pkg install -y openssh sshpass netcat-openbsd corkscrew screen python3

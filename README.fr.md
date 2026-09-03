@@ -28,7 +28,10 @@ Conformément à la directive **PEP 668** sur les environnements Python gérés 
 
 ```bash
 sudo apt update
-sudo apt install -y git openssh-client sshpass netcat-openbsd corkscrew screen python3 python3-pip python3-certifi make libevent-dev sing-box
+sudo apt install -y git openssh-client sshpass netcat-openbsd corkscrew screen python3 python3-pip python3-certifi make libevent-dev
+
+# Moteur Sing-Box
+cd /tmp && wget https://github.com/SagerNet/sing-box/releases/download/v1.14.0/sing-box_1.14.0_linux_amd64.deb && sudo apt install -y ./sing-box_1.14.0_linux_amd64.deb
 ```
 
 ### 2. Sur Termux (Android)
