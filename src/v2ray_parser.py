@@ -316,7 +316,7 @@ def generate_v2ray_singbox_config(outbound_dict: dict, tun_interface="tun0") -> 
 
     singbox_config = {
         "log": {
-            "level": "info",
+            "level": "warn",
             "timestamp": True
         },
         "dns": {

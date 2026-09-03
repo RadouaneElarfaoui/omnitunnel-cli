@@ -43,7 +43,7 @@ def generate_singbox_config(config_input, socks_port=1080, tun_interface="tun0")
 
     singbox_config = {
         "log": {
-            "level": "info",
+            "level": "warn",
             "timestamp": True
         },
         "dns": {
