@@ -66,15 +66,47 @@ class injector():
 			if not packet:
 				self.logs(f'{R}Connection closed by server{GR}')
 				return None
-			res = packet.decode('utf-8','ignore')
-			status = res.split('\n')[0]
-			if status.split('-')[0]=='SSH':
+			# Direct SSH banner (no HTTP front)
+			if packet.startswith(b'SSH-'):
+				try:
+					status = packet.decode('utf-8','ignore').split('\n')[0]
+				except:
+					status = packet[:40].decode('utf-8','ignore')
 				self.logs(f'{G}response{GR} : {status}')
 				return client.send(packet)
+			res = packet.decode('utf-8','ignore')
+			status = res.split('\n')[0]
+			if re.match(r'HTTP/\d(\.\d)? ',status):
+				self.logs(f'{G}response{GR} : {status}')
+				self.logs("sending auto response \nHTTP/1.1 200 OK")
+				client.send(b'HTTP/1.1 200 Ok\r\n\r\n')
+				# Server (nginx) often piggybacks SSH banner after HTTP headers
+				# in the same segment (curl shows HTTP 200 + SSH-2.0 together).
+				# Forward any bytes after \r\n\r\n so SSH banner exchange succeeds.
+				header_end = -1
+				for sep in (b'\r\n\r\n', b'\n\n'):
+					idx = packet.find(sep)
+					if idx != -1:
+						header_end = idx + len(sep)
+						break
+				if header_end != -1 and header_end < len(packet):
+					remainder = packet[header_end:]
+					if remainder.strip():
+						# If remainder starts with SSH banner, log it
+						if remainder.startswith(b'SSH-'):
+							try:
+								ssh_line = remainder.decode('utf-8','ignore').split('\n')[0]
+								self.logs(f'{G}response{GR} : {ssh_line}')
+							except:
+								pass
+						client.send(remainder)
+						return len(remainder)
+				continue
 			else:
-				if re.match(r'HTTP/\d(\.\d)? ',status):
+				# Unknown non-HTTP/non-SSH: still unblock corkscrew and wait for SSH
+				if status.strip().split('-')[0]=='SSH':
 					self.logs(f'{G}response{GR} : {status}')
-					self.logs("sending auto response \nHTTP/1.1 200 OK")
+					return client.send(packet)
 				client.send(b'HTTP/1.1 200 Ok\r\n\r\n')
 		self.logs(f'{R}Max retries reached waiting for SSH handshake{GR}')
 		return None
