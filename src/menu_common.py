@@ -37,7 +37,7 @@ MODE_NAMES = {
     '0': 'SSH (direct)',
     '1': 'HTTP → SSH',
     '2': 'TLS → SSH',
-    '3': 'HTTP → TLS → SSH',
+    '3': 'TLS → HTTP → SSH (https)',
     'v2ray': 'V2Ray / Sing-Box'
 }
 

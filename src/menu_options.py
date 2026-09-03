@@ -330,7 +330,7 @@ def menu_edit_connection_mode(mode):
         ('0', 'SSH (direct)', lambda: (_set_mode('0'), STATUS_BREAK)[1]),
         ('1', 'HTTP → SSH', lambda: (_set_mode('1'), STATUS_BREAK)[1]),
         ('2', 'TLS → SSH', lambda: (_set_mode('2'), STATUS_BREAK)[1]),
-        ('3', 'HTTP → TLS → SSH', lambda: (_set_mode('3'), STATUS_BREAK)[1]),
+        ('3', 'TLS → HTTP → SSH (https)', lambda: (_set_mode('3'), STATUS_BREAK)[1]),
         ('B', 'Back to Main Menu', STATUS_BREAK),
     ]
     run_menu("Select Connection Mode", options, mode=mode)
