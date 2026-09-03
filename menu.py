@@ -470,7 +470,7 @@ def edit_engine_mode(config):
         print(f"  [{C_GREEN}1{C_RESET}] Sing-Box Engine (TUN Mode - High Performance & Fast DNS Cache)")
         print(f"  [{C_GREEN}2{C_RESET}] Redsocks Engine (Legacy Mode)")
         print(f"  [{C_GREEN}3{C_RESET}] Activate Kernel TCP BBR Optimization")
-        print(f"  [{C_GREEN}4{C_RESET}] Toggle Sing-Box Log Level (info/warn)")
+        print(f"  [{C_GREEN}4{C_RESET}] Change Sing-Box Log Level")
         print(f"  [{C_GREEN}B{C_RESET}] Back to Main Menu")
 
         choice = input(f"\nSelect an option: ").strip().upper()
@@ -497,12 +497,27 @@ def edit_engine_mode(config):
         elif choice == '4':
             if not config.has_section('engine'):
                 config.add_section('engine')
-            cur = config.get('engine', 'singbox_log_level', fallback='warn')
-            new_level = 'info' if cur != 'info' else 'warn'
-            config.set('engine', 'singbox_log_level', new_level)
-            write_config(config)
-            print(f"\n{C_GREEN}✔ Sing-Box log level set to {new_level}{C_RESET}")
-            input("\nPress Enter to continue...")
+            while True:
+                cur = config.get('engine', 'singbox_log_level', fallback='warn')
+                print(f"\n{C_BOLD}Sing-Box Log Level (current: {C_CYAN}{cur}{C_RESET}{C_BOLD}){C_RESET}")
+                print(f"  [{C_GREEN}1{C_RESET}] info   (verbose - good for debugging)")
+                print(f"  [{C_GREEN}2{C_RESET}] debug  (most verbose)")
+                print(f"  [{C_GREEN}3{C_RESET}] warn   (default - less noise)")
+                print(f"  [{C_GREEN}4{C_RESET}] error  (quietest)")
+                print(f"  [{C_GREEN}B{C_RESET}] Back")
+                lvl_choice = input(f"\nSelect a log level: ").strip().upper()
+                if lvl_choice == 'B':
+                    break
+                elif lvl_choice in ('1', '2', '3', '4'):
+                    level = {'1': 'info', '2': 'debug', '3': 'warn', '4': 'error'}[lvl_choice]
+                    config.set('engine', 'singbox_log_level', level)
+                    write_config(config)
+                    print(f"\n{C_GREEN}✔ Sing-Box log level set to {level}{C_RESET}")
+                    input("\nPress Enter to continue...")
+                    break
+                else:
+                    print(f"\n{C_RED}✕ Invalid option.{C_RESET}")
+            continue
         elif choice == 'B':
             break
         else:
