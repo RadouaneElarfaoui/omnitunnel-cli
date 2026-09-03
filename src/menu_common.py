@@ -8,6 +8,7 @@ import shutil
 import getpass
 import termios
 import tty
+import readline
 from src.omni_profile import (
     export_profile_to_omni,
     import_profile_from_omni,
