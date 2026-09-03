@@ -63,6 +63,9 @@ class sshRunn:
                 env=ssh_env)
                 for line in response.stdout:
                     line = line.decode('utf-8',errors='ignore')
+                    stripped = line.strip()
+                    if not stripped:
+                        continue
 
                     if 'compat_banner: no match:' in line:
                         self.logs(f"{G}handshake starts\nserver :{line.split(':')[2]}")
@@ -75,11 +78,17 @@ class sshRunn:
                     elif 'Permission denied' in line:self.logs(R+'username or password are inncorect '+GR)
                     elif 'Connection closed' in line:self.logs(R+'Connection closed ' +GR)
                     elif 'Could not request local forwarding' in line:self.logs(R+'Port used by another programs '+GR)
-                    elif "Next authentication method: publickey" in line:
+                    elif 'Next authentication method: publickey' in line:
                         self.logs(line)
                     elif 'Entering interactive session.' in line:
                         self.logs(f'{G}connected{GR}')
                         self.connected=True
+                    elif ('error' in line.lower() or 'refused' in line.lower()
+                          or 'not found' in line.lower() or 'could not resolve' in line.lower()
+                          or 'no route' in line.lower() or 'timed out' in line.lower()
+                          or 'invalid' in line.lower() or 'disabled' in line.lower()
+                          or 'no such file' in line.lower()):
+                        self.logs(R + stripped + GR)
 
                     if self.connected:
                         if getattr(self, 'engine_mode', 'singbox') == 'singbox':
@@ -87,6 +96,11 @@ class sshRunn:
                         else:
                             os.system("bash vpn/proxification > /dev/null &")
                         self.connected=False
+
+                # ssh process ended; if we never connected and it failed, show why
+                response.wait()
+                if not self.connected and response.returncode:
+                    self.logs(R + f"SSH exited with code {response.returncode}" + GR)
 
             except KeyboardInterrupt:
                 return None
@@ -108,7 +122,10 @@ class sshRunn:
                 payload = ""
             if self.sni:
                 self.logs(f"SNI : {O}{self.sni}{GR}")
-            self.logs(f"Connected to : {O}{remote_addr}\n{GR}sending Payload :{O}{payload}{GR}")
+            if payload:
+                self.logs(f"Connected to : {O}{remote_addr}\n{GR}sending Payload :{O}{payload}{GR}")
+            else:
+                self.logs(f"Connected to : {O}{remote_addr}{GR}")
 
             if re.match(regx,host):
                 try:
