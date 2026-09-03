@@ -83,11 +83,12 @@ class sshRunn:
                     elif 'Entering interactive session.' in line:
                         self.logs(f'{G}connected{GR}')
                         self.connected=True
-                    elif ('error' in line.lower() or 'refused' in line.lower()
-                          or 'not found' in line.lower() or 'could not resolve' in line.lower()
-                          or 'no route' in line.lower() or 'timed out' in line.lower()
-                          or 'invalid' in line.lower() or 'disabled' in line.lower()
-                          or 'no such file' in line.lower()):
+                    elif not re.match(r'^debug\d*:', stripped) and (
+                              'error' in line.lower() or 'refused' in line.lower()
+                              or 'not found' in line.lower() or 'could not resolve' in line.lower()
+                              or 'no route' in line.lower() or 'timed out' in line.lower()
+                              or 'invalid' in line.lower() or 'disabled' in line.lower()
+                              or 'no such file' in line.lower()):
                         self.logs(R + stripped + GR)
 
                     if self.connected:
