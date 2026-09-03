@@ -5,6 +5,7 @@ import socket
 import time
 import configparser
 import random
+import shutil
 import threading
 from src.logger import log_ssh, log_singbox, log_tunnel, log_error
 
@@ -36,12 +37,13 @@ class sshRunn:
                 inject_port= self.inject_port
                 nc_proxies_mode = [f'nc -X CONNECT -x {inject_host}:{inject_port} %h %p',f'corkscrew {inject_host} {inject_port} %h %p']
 
-
                 if mode =='0':
                     self.logs("Connecting Using Direct SSH " )
                     proxycmd =''
                 else:
-                    proxycmd = random.choice([f'-o "ProxyCommand={nc_proxies_mode[1]}"',f'-o "ProxyCommand={nc_proxies_mode[0]}"'])
+                    # fallback to nc if corkscrew not installed
+                    proxy = nc_proxies_mode[0] if shutil.which("corkscrew") is None else random.choice(nc_proxies_mode)
+                    proxycmd = f'-o "ProxyCommand={proxy}"'
 
                 if self.enableCompress=='y':
                         compress = "-C"
