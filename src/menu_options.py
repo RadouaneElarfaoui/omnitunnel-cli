@@ -11,7 +11,7 @@ from src.menu_common import (
     ensure_saved_configs_dir, clean_filename,
     read_config, write_config, get_mode_name, print_current_status,
     clear_screen, show_header,
-    STATUS_BREAK, STATUS_STAY, run_menu, pick_list,
+    STATUS_BREAK, STATUS_STAY, run_menu, pick_list, run_as_root,
 )
 
 def _frame():
@@ -488,9 +488,9 @@ def menu_edit_engine(mode):
 # Logs / VPN
 # ---------------------------------------------------------------------------
 def menu_view_logs(mode):
-    from src.logger import ensure_logs_dir
+    from src.logger import SESSION_LOG_PATH, ensure_logs_dir
     ensure_logs_dir()
-    log_path = _session_log_path()
+    log_path = SESSION_LOG_PATH
 
     def render():
         print(f"  {C_BOLD}Session Log File:{C_RESET} {C_CYAN}{log_path}{C_RESET}")
