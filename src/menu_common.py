@@ -33,11 +33,11 @@ CONFIG_EXAMPLE_PATH = os.path.join(BASE_DIR, 'cfgs', 'settings.ot.example')
 SAVED_CONFIGS_DIR = os.path.join(BASE_DIR, 'cfgs', 'saved')
 
 MODE_NAMES = {
-    '0': 'Direct SSH',
-    '1': 'Payload Only',
-    '2': 'SNI Only',
-    '3': 'Payload + SNI',
-    'v2ray': 'V2Ray / Xray / Sing-Box Profile'
+    '0': 'SSH (direct)',
+    '1': 'HTTP → SSH',
+    '2': 'TLS → SSH',
+    '3': 'HTTP → TLS → SSH',
+    'v2ray': 'V2Ray / Sing-Box'
 }
 
 # ---- selection status sentinels ----------------------------------------

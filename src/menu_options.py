@@ -327,10 +327,10 @@ def menu_manage_configs(mode):
 # ---------------------------------------------------------------------------
 def menu_edit_connection_mode(mode):
     options = [
-        ('0', 'Direct SSH', lambda: (_set_mode('0'), STATUS_BREAK)[1]),
-        ('1', 'Payload Only (HTTP Injector)', lambda: (_set_mode('1'), STATUS_BREAK)[1]),
-        ('2', 'SNI Only (SSL/TLS)', lambda: (_set_mode('2'), STATUS_BREAK)[1]),
-        ('3', 'Payload + SNI (SSL/TLS Injector)', lambda: (_set_mode('3'), STATUS_BREAK)[1]),
+        ('0', 'SSH (direct)', lambda: (_set_mode('0'), STATUS_BREAK)[1]),
+        ('1', 'HTTP → SSH', lambda: (_set_mode('1'), STATUS_BREAK)[1]),
+        ('2', 'TLS → SSH', lambda: (_set_mode('2'), STATUS_BREAK)[1]),
+        ('3', 'HTTP → TLS → SSH', lambda: (_set_mode('3'), STATUS_BREAK)[1]),
         ('B', 'Back to Main Menu', STATUS_BREAK),
     ]
     run_menu("Select Connection Mode", options, mode=mode)
