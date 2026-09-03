@@ -11,6 +11,7 @@ import json
 import base64
 import binascii
 import urllib.parse
+import configparser
 
 def safe_b64decode(s: str) -> str:
     """Decode base64 string with automatic padding handling."""
@@ -314,9 +315,22 @@ def generate_v2ray_singbox_config(outbound_dict: dict, tun_interface="tun0") -> 
     if "tag" not in outbound_dict:
         outbound_dict["tag"] = "proxy-out"
 
+    log_level = "warn"
+    try:
+        settings = configparser.ConfigParser()
+        settings.read(os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            'cfgs', 'settings.ini'
+        ))
+        candidate = settings.get('engine', 'singbox_log_level', fallback='warn').strip().lower()
+        if candidate in ("info", "debug", "warn", "error"):
+            log_level = candidate
+    except Exception:
+        pass
+
     singbox_config = {
         "log": {
-            "level": "warn",
+            "level": log_level,
             "timestamp": True
         },
         "dns": {

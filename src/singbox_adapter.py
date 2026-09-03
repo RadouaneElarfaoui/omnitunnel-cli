@@ -41,9 +41,16 @@ def generate_singbox_config(config_input, socks_port=1080, tun_interface="tun0")
         except ValueError:
             pass
 
+    # Log level: 'info' to debug, 'warn' (default) to reduce noise
+    log_level = "warn"
+    if "engine" in config_dict and "singbox_log_level" in config_dict["engine"]:
+        candidate = str(config_dict["engine"]["singbox_log_level"]).strip().lower()
+        if candidate in ("info", "debug", "warn", "error"):
+            log_level = candidate
+
     singbox_config = {
         "log": {
-            "level": "warn",
+            "level": log_level,
             "timestamp": True
         },
         "dns": {

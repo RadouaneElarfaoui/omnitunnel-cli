@@ -38,6 +38,7 @@ class TestSingboxAdapter(unittest.TestCase):
         }
 
         sb_dict = generate_singbox_config(sample_config, socks_port=1080)
+        self.assertEqual(sb_dict["log"]["level"], "warn", "Default log level should be warn")
         self.assertIn("log", sb_dict)
         self.assertIn("dns", sb_dict)
         self.assertIn("inbounds", sb_dict)
@@ -72,6 +73,19 @@ class TestSingboxAdapter(unittest.TestCase):
 
         is_valid, msg = validate_singbox_config(out_file)
         self.assertTrue(is_valid, f"Validation failed: {msg}")
+
+    def test_singbox_log_level_setting(self):
+        def cfg_dict(level):
+            return {
+                "engine": {"engine_mode": "singbox", "singbox_log_level": level},
+                "ssh": {"socks_port": "1080"}
+            }
+        self.assertEqual(generate_singbox_config(cfg_dict("info"))["log"]["level"], "info")
+        self.assertEqual(generate_singbox_config(cfg_dict("debug"))["log"]["level"], "debug")
+        self.assertEqual(generate_singbox_config(cfg_dict("error"))["log"]["level"], "error")
+        self.assertEqual(generate_singbox_config(cfg_dict("warn"))["log"]["level"], "warn")
+        # unknown value falls back to warn
+        self.assertEqual(generate_singbox_config(cfg_dict("bogus"))["log"]["level"], "warn")
 
 if __name__ == "__main__":
     unittest.main()

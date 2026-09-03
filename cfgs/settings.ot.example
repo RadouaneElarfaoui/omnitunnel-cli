@@ -27,7 +27,8 @@
       "server_name": "vps.example.com"
     },
     "engine": {
-      "engine_mode": "singbox"
+      "engine_mode": "singbox",
+      "singbox_log_level": "warn"
     }
   }
 }
