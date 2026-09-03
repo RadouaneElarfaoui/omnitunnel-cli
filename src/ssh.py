@@ -4,8 +4,9 @@ import subprocess
 import socket
 import time
 import configparser
-import random 
-from src.logger import log_ssh
+import random
+import threading
+from src.logger import log_ssh, log_singbox, log_tunnel, log_error
 
 
 # colors
@@ -92,10 +93,7 @@ class sshRunn:
                         self.logs(R + stripped + GR)
 
                     if self.connected:
-                        if getattr(self, 'engine_mode', 'singbox') == 'singbox':
-                            os.system("sudo -E bash vpn/singbox_proxification > /dev/null &")
-                        else:
-                            os.system("sudo -E bash vpn/proxification > /dev/null &")
+                        self._launch_engine()
                         self.connected=False
 
                 # ssh process ended; if we never connected and it failed, show why
@@ -109,6 +107,35 @@ class sshRunn:
                 print(error)
     def createConf(self,host,user):
             _=subprocess.run(["sh","ConfMake",host,user])
+
+    def _launch_engine(self):
+        engine = getattr(self, 'engine_mode', 'singbox')
+        if engine == 'singbox':
+            script = "vpn/singbox_proxification"
+            logger = log_singbox
+        else:
+            script = "vpn/proxification"
+            logger = log_tunnel
+        self.logs(f"Launching {engine} engine...")
+        # Engine needs root (iptables/TUN), so elevate via sudo; run in background
+        # and stream its output through the logger instead of discarding it.
+        proc = subprocess.Popen(
+            ["sudo", "-E", "bash", script],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+        def _stream():
+            try:
+                for line in proc.stdout:
+                    line = line.rstrip()
+                    if line:
+                        logger(line)
+            except Exception as e:
+                log_error(f"Engine output error: {e}")
+
+        threading.Thread(target=_stream, daemon=True).start()
+        return proc
 
     def create_connection(self,host,port,user,password,mode,auth_methode ):
         try:
