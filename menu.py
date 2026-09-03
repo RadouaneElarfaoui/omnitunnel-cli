@@ -434,7 +434,7 @@ def show_header():
 def print_current_status(config):
     mode = config.get('mode', 'connection_mode', fallback='0')
     engine_mode = config.get('engine', 'engine_mode', fallback='singbox')
-    engine_label = "Sing-Box (TUN - High Speed)" if engine_mode == 'singbox' else "Redsocks (Legacy)"
+    engine_label = "Sing-Box" if engine_mode == 'singbox' else "Redsocks (Legacy)"
     sb_log_level = config.get('engine', 'singbox_log_level', fallback='warn')
 
     ssh_host = config.get('ssh', 'host', fallback='None')
@@ -467,7 +467,7 @@ def edit_engine_mode(config):
         print(f"  Current Engine: {C_CYAN}{curr_engine}{C_RESET}")
         curr_level = config.get('engine', 'singbox_log_level', fallback='warn')
         print(f"  Current Sing-Box Log Level: {C_CYAN}{curr_level}{C_RESET}\n")
-        print(f"  [{C_GREEN}1{C_RESET}] Sing-Box Engine (TUN Mode - High Performance & Fast DNS Cache)")
+        print(f"  [{C_GREEN}1{C_RESET}] Sing-Box Engine")
         print(f"  [{C_GREEN}2{C_RESET}] Redsocks Engine (Legacy Mode)")
         print(f"  [{C_GREEN}3{C_RESET}] Activate Kernel TCP BBR Optimization")
         print(f"  [{C_GREEN}4{C_RESET}] Change Sing-Box Log Level")
@@ -479,7 +479,7 @@ def edit_engine_mode(config):
                 config.add_section('engine')
             config.set('engine', 'engine_mode', 'singbox')
             write_config(config)
-            print(f"\n{C_GREEN}✔ Engine set to Sing-Box (TUN Mode)!{C_RESET}")
+            print(f"\n{C_GREEN}✔ Engine set to Sing-Box!{C_RESET}")
             input("\nPress Enter to continue...")
             break
         elif choice == '2':
