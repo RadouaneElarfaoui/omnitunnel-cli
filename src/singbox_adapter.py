@@ -64,8 +64,7 @@ def generate_singbox_config(config_input, socks_port=1080, tun_interface="tun0")
                     "path": "/dns-query",
                     "detour": "socks-out"
                 }
-            ],
-            "independent_cache": True
+            ]
         },
         "inbounds": [
             {
@@ -75,8 +74,7 @@ def generate_singbox_config(config_input, socks_port=1080, tun_interface="tun0")
                 "address": ["172.19.0.1/30"],
                 "auto_route": True,
                 "strict_route": True,
-                "stack": "mixed",
-                "sniff": True
+                "stack": "mixed"
             }
         ],
         "outbounds": [
@@ -94,6 +92,9 @@ def generate_singbox_config(config_input, socks_port=1080, tun_interface="tun0")
         "route": {
             "default_domain_resolver": "google-doh",
             "rules": [
+                {
+                    "action": "sniff"
+                },
                 {
                     "action": "hijack-dns",
                     "protocol": "dns"
