@@ -76,12 +76,14 @@ mode=$(cat cfgs/settings.ini |grep "connection_mode"| awk '{print $3}')
 
 killprocess() {
 echo -e "${RED}[+] KILLING PROCESS...."
-pkill -f "python3 src/ssh.py"
-pkill ssh
-pkill redsocks
-pkill dns2socks
-pkill sing-box
-pkill -f "python3 main.py"
+pkill -f "python3 src/ssh.py" 2>/dev/null || true
+# only kill the tunnel's ssh clients (dynamic forward -CND 1080 / host1), never sshd/ssh-agent
+pkill -f "ssh.*-CND 1080" 2>/dev/null || true
+pkill -f "sshpass.*host1" 2>/dev/null || true
+pkill redsocks 2>/dev/null || true
+pkill dns2socks 2>/dev/null || true
+pkill sing-box 2>/dev/null || true
+pkill -f "python3 main.py" 2>/dev/null || true
 echo -e "[+] DONE ${SCOLOR}"
 }
 
