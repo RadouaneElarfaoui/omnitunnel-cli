@@ -1,6 +1,7 @@
 #!/bin/sh
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cat << EOF > "$SCRIPT_DIR/configFile"
+mkdir -p "$SCRIPT_DIR/cfgs"
+cat << EOF > "$SCRIPT_DIR/cfgs/configFile"
 Host host1
     HostName $1
     User $2
@@ -8,4 +9,4 @@ Host host1
     HostKeyAlgorithms +ssh-rsa,ssh-ed25519,ecdsa-sha2-nistp256,rsa-sha2-256,rsa-sha2-512
 EOF
 
-chmod 600 "$SCRIPT_DIR/configFile"
+chmod 600 "$SCRIPT_DIR/cfgs/configFile"

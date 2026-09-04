@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.1.4
+
+* **No-sudo configFile fix**: `ConfMake` now writes to `cfgs/configFile` (777) instead of the root install dir (755), and `src/ssh.py` reads from there, so the non-sudo menu (`otunnel`) no longer fails with `Permission denied` on `configFile` creation.
+
 ## v1.1.3
 
 * **No-sudo launcher**: `otunnel` wrapper no longer prefixes `sudo`; the menu opens without a password prompt and only `Run VPN` / `BBR` / `sing-box` elevate via `sudo` internally, matching the desktop `Terminal=true` flow.

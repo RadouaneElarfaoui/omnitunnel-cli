@@ -54,7 +54,7 @@ class sshRunn:
                     sshcmd = f"ssh -i {password} {os.path.join(PROJECT_DIR, 'cfgs/publickey.pem')} {proxycmd} useless@{host}"
                     ssh_env = os.environ.copy()
                 else:
-                    sshcmd = f"sshpass -e ssh {proxycmd} -F {os.path.join(PROJECT_DIR, 'configFile')} host1"
+                    sshcmd = f"sshpass -e ssh {proxycmd} -F {os.path.join(PROJECT_DIR, 'cfgs', 'configFile')} host1"
                     ssh_env = {**os.environ, 'SSHPASS': password}
                 perf_opts = "-o Ciphers=chacha20-poly1305@openssh.com,aes128-gcm@openssh.com,aes256-gcm@openssh.com"
                 response = subprocess.Popen(
