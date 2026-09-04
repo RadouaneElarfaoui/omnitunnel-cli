@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.1.7
+
+* **Menu rework — no duplication, inline editing, toggles**: `Edit` now shows the same `Current Configuration` lines as the main overview but selectable (↑↓ cycles the preview lines); `VPN Engine`/`Log Level` moved to bottom (rarely changed); `Proxy Server` edits inline (`ip:port` prefilled) instead of submenu; `Password`/`auth` remain inline with `readline` prefill for in-place edit (fix `Edit Proxy [ip:port]: …` duplication); `Auth Method`/`Compression`/`Engine` collapsed from 2-option submenus to direct toggles; `Export Profile` collapsed from 2-option submenu to single pick-list (`▶ Current` + library); removed redundant `Connection mode updated / Press Enter` confirms for trivial selects; `menu_common` centralizes `status_snapshot`/`input_editable`/`stay_after`/`break_after` and fixes arrow-menu highlight memory (`←/Esc` → Back); `build-deb.sh` already slim.
+
 ## v1.1.6
 
 * **Slim deb**: `build-deb.sh` now excludes `docs/` (images ~200K) and `libs/` (`redsocks.zip` 1.39M + `dns2socks.zip` 80K); deb drops from ~1.5M to ~100K. `install.sh`/`runvpn.sh` still fetch/compile `libs/` on demand if needed.
