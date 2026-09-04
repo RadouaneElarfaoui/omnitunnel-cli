@@ -73,6 +73,14 @@ fi
 rm -f /usr/local/bin/ot /usr/local/bin/omnitunnel 2>/dev/null || true
 
 # ------------------------------------------------------------------------------
+# 3b. Remove Desktop Launcher Entry and Icon
+# ------------------------------------------------------------------------------
+rm -f /usr/share/applications/omnitunnel-cli.desktop \
+      /usr/share/icons/hicolor/scalable/apps/omnitunnel-cli.svg 2>/dev/null || true
+update-desktop-database /usr/share/applications 2>/dev/null || true
+gtk-update-icon-cache /usr/share/icons/hicolor 2>/dev/null || true
+
+# ------------------------------------------------------------------------------
 # 4. Remove Project Directory /opt/omnitunnel-cli
 # ------------------------------------------------------------------------------
 if [ -d "$INSTALL_DIR" ]; then

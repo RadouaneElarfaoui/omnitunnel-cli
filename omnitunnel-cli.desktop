@@ -1,9 +1,9 @@
 [Desktop Entry]
 Name=OmniTunnel CLI
 Comment=VPN client based on SSH tunnels and V2Ray/Xray protocols
-Exec=/opt/omnitunnel-cli/menu.py
-Icon=/usr/share/icons/hicolor/scalable/apps/omnitunnel-cli.svg
-Terminal=false
+Exec=/usr/local/bin/otunnel
+Icon=omnitunnel-cli
+Terminal=true
 Type=Application
 Categories=Network;Security;Utility;
 Keywords=vpn;ssh;tunnel;v2ray;xray;proxy;

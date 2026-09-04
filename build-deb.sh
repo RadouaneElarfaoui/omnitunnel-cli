@@ -46,6 +46,20 @@ Description: CLI VPN client based on SSH tunnels and V2Ray/Xray protocols
  profiles, and kernel TCP BBR optimization.
 EOF
 
+# Wrapper is written once on the host (quoted heredoc, no expansion issues)
+# and reused both in postinst and inside the container payload.
+cat > "${CTRL_DIR}/otunnel" <<'WRAPPER'
+#!/usr/bin/env bash
+INSTALL_DIR="/opt/omnitunnel-cli"
+cd "$INSTALL_DIR" || exit 1
+if [ "$EUID" -ne 0 ]; then
+    exec sudo python3 "$INSTALL_DIR/menu.py" "$@"
+else
+    exec python3 "$INSTALL_DIR/menu.py" "$@"
+fi
+WRAPPER
+chmod 755 "${CTRL_DIR}/otunnel"
+
 cat > "${CTRL_DIR}/DEBIAN/postinst" <<'POSTINST'
 #!/bin/bash
 set -e
@@ -53,6 +67,23 @@ ID="/opt/omnitunnel-cli"
 mkdir -p "${ID}/bin" "${ID}/logs" "${ID}/cfgs/saved"
 touch "${ID}/cfgs/saved/.gitkeep"
 chmod 777 "${ID}/cfgs" "${ID}/logs"
+# Launcher wrapper (also shipped as /usr/local/bin/otunnel inside the .deb;
+# re-created here so upgrades/repairs always leave a working entry point).
+cat > /usr/local/bin/otunnel <<'OTUNNEL_WRAPPER'
+#!/usr/bin/env bash
+INSTALL_DIR="/opt/omnitunnel-cli"
+cd "$INSTALL_DIR" || exit 1
+if [ "$EUID" -ne 0 ]; then
+    exec sudo python3 "$INSTALL_DIR/menu.py" "$@"
+else
+    exec python3 "$INSTALL_DIR/menu.py" "$@"
+fi
+OTUNNEL_WRAPPER
+chmod 755 /usr/local/bin/otunnel
+# The desktop session runs as an unprivileged user, so the launcher entry
+# and icon MUST stay world-readable (0644), otherwise the app is invisible.
+chmod 644 /usr/share/applications/omnitunnel-cli.desktop 2>/dev/null || true
+chmod 644 /usr/share/icons/hicolor/scalable/apps/omnitunnel-cli.svg 2>/dev/null || true
 if ! command -v sing-box &>/dev/null; then
     echo "Note: sing-box not found. Install it manually:"
     echo "  wget https://github.com/SagerNet/sing-box/releases/download/v1.14.0/sing-box_1.14.0_linux_amd64.deb"
@@ -62,6 +93,15 @@ update-desktop-database /usr/share/applications 2>/dev/null || true
 gtk-update-icon-cache /usr/share/icons/hicolor 2>/dev/null || true
 POSTINST
 chmod 755 "${CTRL_DIR}/DEBIAN/postinst"
+
+cat > "${CTRL_DIR}/DEBIAN/postrm" <<'POSTRM'
+#!/bin/bash
+set -e
+# Refresh launcher/icon caches on remove/purge so the entry disappears cleanly.
+update-desktop-database /usr/share/applications 2>/dev/null || true
+gtk-update-icon-cache /usr/share/icons/hicolor 2>/dev/null || true
+POSTRM
+chmod 755 "${CTRL_DIR}/DEBIAN/postrm"
 
 cat > "${CTRL_DIR}/DEBIAN/prerm" <<'PRERM'
 #!/bin/bash
@@ -78,7 +118,7 @@ echo "==> Running build inside container..."
 podman run --rm --name "${CONTAINER}" \
     -v "${SCRIPT_DIR}:/src:ro" \
     -v "${OUTPUT_DIR}:/output" \
-    -v "${CTRL_DIR}/DEBIAN:/ctrl:ro" \
+    -v "${CTRL_DIR}:/ctrl:ro" \
     "${IMAGE}" \
     bash -c '
 set -euo pipefail
@@ -101,15 +141,29 @@ mkdir -p "${PKGDIR}/opt/omnitunnel-cli/cfgs/saved"
 mkdir -p "${PKGDIR}/opt/omnitunnel-cli/logs"
 touch "${PKGDIR}/opt/omnitunnel-cli/cfgs/saved/.gitkeep"
 
+# Normalize permissions: the desktop session is unprivileged, so everything
+# under /opt must be world-readable/traversable (source checkouts often
+# carry 600/700 modes which would break imports AND hide the launcher entry).
+find "${PKGDIR}/opt/omnitunnel-cli" -type d -exec chmod 755 {} +
+find "${PKGDIR}/opt/omnitunnel-cli" -type f -exec chmod 644 {} +
+
 chmod 755 "${PKGDIR}/opt/omnitunnel-cli/runvpn.sh"
 chmod 755 "${PKGDIR}/opt/omnitunnel-cli/menu.py"
 chmod 755 "${PKGDIR}/opt/omnitunnel-cli/main.py"
 chmod 755 "${PKGDIR}/opt/omnitunnel-cli/ConfMake"
+chmod 755 "${PKGDIR}/opt/omnitunnel-cli/install.sh" "${PKGDIR}/opt/omnitunnel-cli/uninstall.sh" || true
 find "${PKGDIR}/opt/omnitunnel-cli/vpn/" -type f -exec chmod 755 {} +
 
-cp /ctrl/control   "${PKGDIR}/DEBIAN/control"
-cp /ctrl/postinst  "${PKGDIR}/DEBIAN/postinst"
-cp /ctrl/prerm     "${PKGDIR}/DEBIAN/prerm"
+# Terminal launcher used by the .desktop Exec= line (written on the host
+# to avoid nested-heredoc quoting issues inside this bash -c string).
+mkdir -p "${PKGDIR}/usr/local/bin"
+cp /ctrl/otunnel "${PKGDIR}/usr/local/bin/otunnel"
+chmod 755 "${PKGDIR}/usr/local/bin/otunnel"
+
+cp /ctrl/DEBIAN/control   "${PKGDIR}/DEBIAN/control"
+cp /ctrl/DEBIAN/postinst  "${PKGDIR}/DEBIAN/postinst"
+cp /ctrl/DEBIAN/postrm    "${PKGDIR}/DEBIAN/postrm"
+cp /ctrl/DEBIAN/prerm     "${PKGDIR}/DEBIAN/prerm"
 
 mkdir -p "${PKGDIR}/usr/share/applications"
 mkdir -p "${PKGDIR}/usr/share/icons/hicolor/scalable/apps"

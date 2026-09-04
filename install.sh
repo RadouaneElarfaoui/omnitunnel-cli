@@ -221,6 +221,22 @@ chmod +x "$BIN_LINK"
 echo -e "${C_GREEN}[✔] Launcher created: $BIN_LINK -> $INSTALL_DIR/menu.py${C_RESET}"
 
 # ------------------------------------------------------------------------------
+# 6b. Install Desktop Launcher Entry (app menu / Activities search)
+# ------------------------------------------------------------------------------
+echo -e "\n${C_BLUE}[*] Installing desktop launcher entry...${C_RESET}"
+if [ -f "$INSTALL_DIR/omnitunnel-cli.desktop" ]; then
+    install -Dm644 "$INSTALL_DIR/omnitunnel-cli.desktop" /usr/share/applications/omnitunnel-cli.desktop
+    echo -e "${C_GREEN}[✔] Desktop entry: /usr/share/applications/omnitunnel-cli.desktop${C_RESET}"
+fi
+if [ -f "$INSTALL_DIR/omnitunnel-cli.svg" ]; then
+    install -Dm644 "$INSTALL_DIR/omnitunnel-cli.svg" /usr/share/icons/hicolor/scalable/apps/omnitunnel-cli.svg
+    echo -e "${C_GREEN}[✔] Icon: /usr/share/icons/hicolor/scalable/apps/omnitunnel-cli.svg${C_RESET}"
+fi
+update-desktop-database /usr/share/applications 2>/dev/null || true
+gtk-update-icon-cache /usr/share/icons/hicolor 2>/dev/null || true
+echo -e "    If the app does not appear yet, log out/in or run: ${C_CYAN}sudo update-desktop-database${C_RESET}"
+
+# ------------------------------------------------------------------------------
 # 7. Complete
 # ------------------------------------------------------------------------------
 echo -e "\n${C_GREEN}${C_BOLD}======================================================${C_RESET}"
