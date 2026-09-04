@@ -25,6 +25,9 @@ cfgs/saved/*
 *.ot
 !cfgs/settings.ot.example
 
+# Build output
+dist/
+
 # Python cache files
 __pycache__/
 src/__pycache__/
