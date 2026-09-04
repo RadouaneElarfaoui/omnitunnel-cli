@@ -19,7 +19,7 @@
 ## 🔧 Installation
 # Debian/Ubuntu
 ```bash
-sudo apt install -y openssh-client sshpass netcat-openbsd corkscrew screen python3 python3-certifi
+sudo apt install -y openssh-client sshpass netcat-openbsd screen python3 python3-certifi
 # Sing-Box engine
 cd /tmp && wget https://github.com/SagerNet/sing-box/releases/download/v1.14.0/sing-box_1.14.0_linux_amd64.deb && sudo apt install -y ./sing-box_1.14.0_linux_amd64.deb
 ```
