@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.1.2
+
+* **Tunnel reuse fix**: `src/tunnel.py` now sets `SO_REUSEADDR` before `bind()` and exits cleanly with a logged error instead of falling through to `accept()` with `None` (`Coudn't open socket` / `NoneType accept`). `runvpn.sh` now kills any stale `main.py` before the first bind and sleeps after each `killprocess` so the port is released before the next iteration or next `Run VPN` click.
+
 ## v1.1.1
 
 * **Launcher visibility fix**: `.deb` now ships world-readable desktop entry + icon (`0644`) and refreshes `update-desktop-database` / `gtk-update-icon-cache` on install/remove, so OmniTunnel appears in the app menu.
