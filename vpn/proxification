@@ -60,7 +60,7 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 # Start redsocks in the background
-cat << EOF > vpn/redsocks.conf
+cat << EOF > "$PROJECT_DIR/vpn/redsocks.conf"
 base {
     log_debug = off;
     log_info = on;
@@ -77,7 +77,7 @@ EOF
 
 sleep 1
 
-screen -Amds nohub redsocks -c vpn/redsocks.conf
+screen -Amds nohub redsocks -c "$PROJECT_DIR/vpn/redsocks.conf"
 
 dns2socks 127.0.0.1:1080 8.8.8.8:53 $dnsIP:$dnsPort1 >/dev/null 
 

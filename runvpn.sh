@@ -11,8 +11,9 @@ PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Ensure local bin directory exists
 mkdir -p "$PROJECT_DIR/bin"
 
-# Add local bin to PATH
+# Add local bin to PATH and ensure Python imports work regardless of cwd
 export PATH="$PROJECT_DIR/bin:$PATH"
+export PYTHONPATH="$PROJECT_DIR:${PYTHONPATH:-}"
 
 # Engine mode (singbox = default, no compile needed)
 engine=$(grep "engine_mode" "$PROJECT_DIR/cfgs/settings.ini" | awk '{print $3}' | tr -d '\r')
@@ -72,18 +73,18 @@ fi
 clear
 python3 -c "import sys; sys.path.insert(0, '$PROJECT_DIR'); from src.logger import log_session_start; log_session_start()" 2>/dev/null
 
-mode=$(cat cfgs/settings.ini |grep "connection_mode"| awk '{print $3}')
+mode=$(cat "$PROJECT_DIR/cfgs/settings.ini" |grep "connection_mode"| awk '{print $3}')
 
 killprocess() {
 echo -e "${RED}[+] KILLING PROCESS...."
-pkill -f "python3 src/ssh.py" 2>/dev/null || true
+pkill -f "python3.*src/ssh.py" 2>/dev/null || true
 # only kill the tunnel's ssh clients (dynamic forward -CND 1080 / host1), never sshd/ssh-agent
 pkill -f "ssh.*-CND 1080" 2>/dev/null || true
 pkill -f "sshpass.*host1" 2>/dev/null || true
 pkill redsocks 2>/dev/null || true
 pkill dns2socks 2>/dev/null || true
 pkill sing-box 2>/dev/null || true
-pkill -f "python3 main.py" 2>/dev/null || true
+pkill -f "python3.*main.py" 2>/dev/null || true
 echo -e "[+] DONE ${SCOLOR}"
 }
 
@@ -93,7 +94,7 @@ trap 'killprocess' EXIT
 
 function serverlistening() {
     localport="$1"
-    python3 main.py $localport &
+    python3 "$PROJECT_DIR/main.py" $localport &
     echo ""
 }
 function connect() {
@@ -101,10 +102,10 @@ function connect() {
 
 	if [ "$mode" = "0" ]
         then
-           python3 src/ssh.py 0
+           python3 "$PROJECT_DIR/src/ssh.py" 0
     else
 
-			python3 src/ssh.py $localport
+			python3 "$PROJECT_DIR/src/ssh.py" $localport
 
 	fi
 
@@ -120,7 +121,7 @@ for i in {9008..9999}
 do
 
     echo -e "$GREEN ++++ LOGS ++++$SCOLOR"
-	rm -rf logs.txt
+	rm -f "$PROJECT_DIR/logs.txt" 2>/dev/null || true
 	serverlistening $i
 	sleep 1
 	connect $i
