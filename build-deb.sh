@@ -3,7 +3,7 @@ set -euo pipefail
 
 IMAGE="omnitunnel-deb-build"
 CONTAINER="omnitunnel-build-container"
-VERSION="1.1.5"
+VERSION="1.1.6"
 ARCH="amd64"
 PKG_NAME="omnitunnel-cli"
 
@@ -125,6 +125,7 @@ mkdir -p "${PKGDIR}/opt/omnitunnel-cli"
 
 rsync -a --no-perms --no-owner --no-group \
     --exclude=".git" --exclude="__pycache__" --exclude="bin/" --exclude="logs/" \
+    --exclude="docs/" --exclude="libs/" \
     --exclude="dist/" --exclude="build-deb.sh" --exclude="*.deb" \
     /src/ "${PKGDIR}/opt/omnitunnel-cli/"
 

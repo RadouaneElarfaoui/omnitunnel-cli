@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.1.6
+
+* **Slim deb**: `build-deb.sh` now excludes `docs/` (images ~200K) and `libs/` (`redsocks.zip` 1.39M + `dns2socks.zip` 80K); deb drops from ~1.5M to ~100K. `install.sh`/`runvpn.sh` still fetch/compile `libs/` on demand if needed.
+
 ## v1.1.5
 
 * **Saved profiles permission fix**: `cfgs/saved` is now `777` in the `.deb` payload and `postinst`/`install.sh`, and `ensure_saved_configs_dir()` ensures `777`, so non-sudo `otunnel` can save `.ot` profiles without `Permission denied`.
