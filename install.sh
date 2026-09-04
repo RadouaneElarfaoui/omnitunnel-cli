@@ -184,6 +184,12 @@ fi
 # Ensure default directories and configuration
 mkdir -p "$INSTALL_DIR/bin" "$INSTALL_DIR/logs" "$INSTALL_DIR/cfgs/saved"
 
+# Ensure valid settings.ini
+if [ -f "$INSTALL_DIR/cfgs/settings.ini" ] && head -n 1 "$INSTALL_DIR/cfgs/settings.ini" | grep -q '^{'; then
+    echo -e "    Fixing corrupted settings.ini..."
+    rm -f "$INSTALL_DIR/cfgs/settings.ini"
+fi
+
 if [ ! -f "$INSTALL_DIR/cfgs/settings.ini" ] && [ -f "$INSTALL_DIR/cfgs/settings.ot.example" ]; then
     echo -e "    Generating default settings.ini..."
     python3 -c "import sys; sys.path.insert(0, '$INSTALL_DIR'); from src.menu_common import read_config; read_config()" 2>/dev/null || true
