@@ -185,8 +185,8 @@ fi
 mkdir -p "$INSTALL_DIR/bin" "$INSTALL_DIR/logs" "$INSTALL_DIR/cfgs/saved"
 
 if [ ! -f "$INSTALL_DIR/cfgs/settings.ini" ] && [ -f "$INSTALL_DIR/cfgs/settings.ot.example" ]; then
-    echo -e "    Creating default settings.ini..."
-    cp "$INSTALL_DIR/cfgs/settings.ot.example" "$INSTALL_DIR/cfgs/settings.ini"
+    echo -e "    Generating default settings.ini..."
+    python3 -c "import sys; sys.path.insert(0, '$INSTALL_DIR'); from src.menu_common import read_config; read_config()" 2>/dev/null || true
 fi
 
 # Set executable permissions on scripts
