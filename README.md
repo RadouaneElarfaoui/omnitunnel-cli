@@ -17,14 +17,58 @@
 ---
 
 ## 🔧 Installation
-# Debian/Ubuntu
+
+### ⚡ One-Line Install (Recommended)
+
 ```bash
-sudo apt install -y openssh-client sshpass netcat-openbsd python3 python3-certifi
-# Sing-Box engine
-cd /tmp && wget https://github.com/SagerNet/sing-box/releases/download/v1.14.0/sing-box_1.14.0_linux_amd64.deb && sudo apt install -y ./sing-box_1.14.0_linux_amd64.deb
+curl -fsSL https://raw.githubusercontent.com/RadouaneElarfaoui/omnitunnel-cli/main/install.sh | sudo bash
 ```
 
+Or with `wget`:
+
+```bash
+wget -qO- https://raw.githubusercontent.com/RadouaneElarfaoui/omnitunnel-cli/main/install.sh | sudo bash
+```
+
+> **Note**: The installer automatically detects already installed packages and Sing-Box, only downloading what is missing.
+
+### 🗑️ One-Line Uninstall
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/RadouaneElarfaoui/omnitunnel-cli/main/uninstall.sh | sudo bash
+```
+
+---
+
+### Manual Installation (Debian / Ubuntu)
+
+```bash
+# 1. Install dependencies
+sudo apt update
+sudo apt install -y git openssh-client sshpass netcat-openbsd python3 python3-certifi iptables
+
+# 2. Sing-Box engine (if not installed)
+cd /tmp && wget https://github.com/SagerNet/sing-box/releases/download/v1.14.0/sing-box_1.14.0_linux_amd64.deb && sudo apt install -y ./sing-box_1.14.0_linux_amd64.deb
+
+# 3. Clone repository and setup
+git clone https://github.com/RadouaneElarfaoui/omnitunnel-cli.git
+cd omnitunnel-cli
+chmod +x menu.py runvpn.sh install.sh uninstall.sh
+```
+
+---
+
 ## 🖥 Usage
+
+If installed via the one-line installer, simply run:
+
+```bash
+otunnel
+```
+
+*(or `sudo otunnel`)*
+
+Or from within the cloned repository folder:
 
 ```bash
 chmod +x menu.py runvpn.sh

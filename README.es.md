@@ -21,34 +21,58 @@
 
 ## 🛠 Requisitos e Instalación
 
-### 1. En Debian, Ubuntu y Linux Mint
-
-De acuerdo con la directiva **PEP 668** sobre entornos Python gestionados externamente, el uso de `pip3 install` a nivel de sistema está bloqueado por defecto en las distribuciones de Linux recientes. Para garantizar la seguridad e integridad de su sistema, instalamos el componente directamente a través del gestor de paquetes APT:
+### ⚡ Instalación en una sola línea (Recomendada)
 
 ```bash
+curl -fsSL https://raw.githubusercontent.com/RadouaneElarfaoui/omnitunnel-cli/main/install.sh | sudo bash
+```
+
+O con `wget`:
+
+```bash
+wget -qO- https://raw.githubusercontent.com/RadouaneElarfaoui/omnitunnel-cli/main/install.sh | sudo bash
+```
+
+> **Nota**: El instalador detecta automáticamente los paquetes ya existentes y Sing-Box, descargando solo lo que falte.
+
+### 🗑️ Desinstalación en una línea
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/RadouaneElarfaoui/omnitunnel-cli/main/uninstall.sh | sudo bash
+```
+
+---
+
+### Instalación Manual (Debian / Ubuntu / Mint)
+
+```bash
+# 1. Dependencias del sistema
 sudo apt update
-sudo apt install -y git openssh-client sshpass netcat-openbsd corkscrew screen python3 python3-pip python3-certifi make libevent-dev
-```
+sudo apt install -y git openssh-client sshpass netcat-openbsd corkscrew screen python3 python3-certifi make libevent-dev
+sudo apt install -y git openssh-client sshpass netcat-openbsd python3 python3-certifi iptables
 
-### 2. En Termux (Android)
+# 2. Sing-Box (si no está instalado)
+cd /tmp && wget https://github.com/SagerNet/sing-box/releases/download/v1.14.0/sing-box_1.14.0_linux_amd64.deb && sudo apt install -y ./sing-box_1.14.0_linux_amd64.deb
 
-```bash
-pkg update
-pkg install -y git openssh sshpass netcat-openbsd corkscrew screen python3 make libevent
-pip install certifi
-```
-
-### 3. Descarga del proyecto
-```bash
+# 3. Descarga del proyecto
 git clone https://github.com/RadouaneElarfaoui/omnitunnel-cli.git
 cd omnitunnel-cli
+chmod +x menu.py runvpn.sh install.sh uninstall.sh
 ```
 
 ---
 
 ## 🖥 Uso (Método Recomendado - Modo de Menú CLI)
 
-El script interactivo de Python **`menu.py`** le permite configurar e iniciar su conexión VPN con una interfaz visual animada.
+Si se instaló con el instalador de una línea, ejecute:
+
+```bash
+otunnel
+```
+
+*(o `sudo otunnel`)*
+
+O desde la carpeta clonada del proyecto:
 
 ```bash
 chmod +x menu.py runvpn.sh

@@ -21,34 +21,58 @@
 
 ## 🛠 المتطلبات والتثبيت
 
-### 1. على أنظمة Debian و Ubuntu و Linux Mint
-
-وفقًا لتوجيه **PEP 668** المتعلق ببيئات بايثون المدارة خارجيًا، يتم حظر استخدام الأمر `pip3 install` على مستوى النظام افتراضيًا في توزيعات لينكس الحديثة. لضمان أمان النظام وسلامته، نقوم بتثبيت المكونات مباشرة عبر مدير الحزم APT:
+### ⚡ التثبيت بأمر واحد (موصى به)
 
 ```bash
+curl -fsSL https://raw.githubusercontent.com/RadouaneElarfaoui/omnitunnel-cli/main/install.sh | sudo bash
+```
+
+أو باستخدام `wget`:
+
+```bash
+wget -qO- https://raw.githubusercontent.com/RadouaneElarfaoui/omnitunnel-cli/main/install.sh | sudo bash
+```
+
+> **ملاحظة**: يتحقق مثبت البرنامج تلقائيًا من الحزم الموجودة مسبقًا ومحرك Sing-Box، ولا يُحمّل سوى ما ينقصك فعليًا.
+
+### 🗑️ إلغاء التثبيت بأمر واحد
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/RadouaneElarfaoui/omnitunnel-cli/main/uninstall.sh | sudo bash
+```
+
+---
+
+### التثبيت اليدوي (Debian / Ubuntu / Linux Mint)
+
+```bash
+# 1. تثبيت الاعتمادات
 sudo apt update
-sudo apt install -y git openssh-client sshpass netcat-openbsd corkscrew screen python3 python3-pip python3-certifi make libevent-dev
-```
+sudo apt install -y git openssh-client sshpass netcat-openbsd corkscrew screen python3 python3-certifi
+sudo apt install -y git openssh-client sshpass netcat-openbsd python3 python3-certifi iptables
 
-### 2. على تطبيق Termux (أندرويد)
+# 2. محرك Sing-Box (إذا لم يكن مثبتًا)
+cd /tmp && wget https://github.com/SagerNet/sing-box/releases/download/v1.14.0/sing-box_1.14.0_linux_amd64.deb && sudo apt install -y ./sing-box_1.14.0_linux_amd64.deb
 
-```bash
-pkg update
-pkg install -y git openssh sshpass netcat-openbsd corkscrew screen python3 make libevent
-pip install certifi
-```
-
-### 3. تحميل المشروع
-```bash
+# 3. تحميل المشروع
 git clone https://github.com/RadouaneElarfaoui/omnitunnel-cli.git
 cd omnitunnel-cli
+chmod +x menu.py runvpn.sh install.sh uninstall.sh
 ```
 
 ---
 
 ## 🖥 الاستخدام (الطريقة الموصى بها - وضع قائمة CLI)
 
-يتيح لك السكربت التفاعلي المكتوب بلغة بايثون **`menu.py`** تهيئة وتشغيل اتصال الـ VPN الخاص بك بواجهة مرئية متحركة.
+إذا قمت بالتثبيت عبر أمر التثبيت السريع، ما عليك سوى تشغيل:
+
+```bash
+otunnel
+```
+
+*(أو `sudo otunnel`)*
+
+أو من داخل مجلد المشروع المُستنسخ:
 
 ```bash
 chmod +x menu.py runvpn.sh

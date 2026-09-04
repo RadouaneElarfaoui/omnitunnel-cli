@@ -21,34 +21,58 @@
 
 ## 🛠 环境要求与安装
 
-### 1. 在 Debian、Ubuntu 和 Linux Mint 上
-
-根据针对外部托管 Python 环境的 **PEP 668** 规程，在较新的 Linux 发行版上，默认禁用了系统级别的 `pip3 install`。为了确保您系统的安全与完整性，我们直接通过 APT 包管理器安装该组件：
+### ⚡ 一键安装（推荐）
 
 ```bash
+curl -fsSL https://raw.githubusercontent.com/RadouaneElarfaoui/omnitunnel-cli/main/install.sh | sudo bash
+```
+
+或使用 `wget`：
+
+```bash
+wget -qO- https://raw.githubusercontent.com/RadouaneElarfaoui/omnitunnel-cli/main/install.sh | sudo bash
+```
+
+> **注意**：安装程序会自动检测已安装的组件与 Sing-Box，仅下载缺失的内容。
+
+### 🗑️ 一键卸载
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/RadouaneElarfaoui/omnitunnel-cli/main/uninstall.sh | sudo bash
+```
+
+---
+
+### 手动安装（Debian / Ubuntu / Mint）
+
+```bash
+# 1. 安装系统依赖
 sudo apt update
-sudo apt install -y git openssh-client sshpass netcat-openbsd corkscrew screen python3 python3-pip python3-certifi make libevent-dev
-```
+sudo apt install -y git openssh-client sshpass netcat-openbsd corkscrew screen python3 python3-certifi make libevent-dev
+sudo apt install -y git openssh-client sshpass netcat-openbsd python3 python3-certifi iptables
 
-### 2. 在 Termux (Android) 上
+# 2. Sing-Box 核心（若未安装）
+cd /tmp && wget https://github.com/SagerNet/sing-box/releases/download/v1.14.0/sing-box_1.14.0_linux_amd64.deb && sudo apt install -y ./sing-box_1.14.0_linux_amd64.deb
 
-```bash
-pkg update
-pkg install -y git openssh sshpass netcat-openbsd corkscrew screen python3 make libevent
-pip install certifi
-```
-
-### 3. 克隆/下载项目
-```bash
+# 3. 克隆与授权
 git clone https://github.com/RadouaneElarfaoui/omnitunnel-cli.git
 cd omnitunnel-cli
+chmod +x menu.py runvpn.sh install.sh uninstall.sh
 ```
 
 ---
 
 ## 🖥 使用方法（推荐方法 - CLI 菜单模式）
 
-交互式 Python 脚本 **`menu.py`** 允许您通过带动画的视觉界面配置并启动 VPN 连接。
+如果通过一键安装脚本安装，直接在任意终端运行：
+
+```bash
+otunnel
+```
+
+*(或 `sudo otunnel`)*
+
+若从项目源码目录运行：
 
 ```bash
 chmod +x menu.py runvpn.sh

@@ -15,44 +15,67 @@
 *   **Moteur Sing-Box TUN Nouvelle Génération** : Interface TUN **`sing-box`** (`tun0`) haute performance avec résolution DNS-over-HTTPS (DoH) et débit multiplié par 3 à 5.
 *   **Format de profil chiffré `.ot`** : Exportation et importation de profils `.ot` (OmniTunnel) avec chiffrement sécurisé PBKDF2-HMAC-SHA256.
 *   **Journalisation centralisée des sessions** : Logs diffusés en direct sur la console et enregistrés dans `logs/session.log` avec horodatage et suppression des codes ANSI.
-*   **Raccourci Terminal Système `ot`** : Lancement instantané depuis n'importe quel dossier via la commande **`ot`**.
+*   **Raccourci Terminal Système `otunnel`** : Lancement instantané depuis n'importe quel dossier via la commande **`otunnel`**.
 *   **Optimisation Kernel TCP BBR** : Contrôle de congestion Linux Kernel BBR avec script d'activation intégré (`vpn/tcp_bbr.sh`).
 
 ---
 
 ## 🛠 Prérequis et Installation
 
-### 1. Sur Debian, Ubuntu et Linux Mint
-
-Conformément à la directive **PEP 668** sur les environnements Python gérés en externe, l'usage de `pip3 install` au niveau système est bloqué par défaut sur les distributions Linux récentes. Pour garantir la sécurité et l'intégrité de votre système, nous installons le composant directement via le gestionnaire de paquets APT :
+### ⚡ Installation en une seule ligne (Recommandée)
 
 ```bash
+curl -fsSL https://raw.githubusercontent.com/RadouaneElarfaoui/omnitunnel-cli/main/install.sh | sudo bash
+```
+
+Ou avec `wget` :
+
+```bash
+wget -qO- https://raw.githubusercontent.com/RadouaneElarfaoui/omnitunnel-cli/main/install.sh | sudo bash
+```
+
+> **Note** : L'installateur vérifie au préalable les composants déjà présents (paquets APT, Sing-Box) et ne télécharge que les éléments manquants.
+
+### 🗑️ Désinstallation en une seule ligne
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/RadouaneElarfaoui/omnitunnel-cli/main/uninstall.sh | sudo bash
+```
+
+---
+
+### Installation Manuelle (Debian / Ubuntu / Mint)
+
+Conformément à la directive **PEP 668** sur les environnements Python gérés en externe, nous installons le composant directement via le gestionnaire de paquets APT :
+
+```bash
+# 1. Dépendances système
 sudo apt update
-sudo apt install -y git openssh-client sshpass netcat-openbsd corkscrew screen python3 python3-pip python3-certifi make libevent-dev
+sudo apt install -y git openssh-client sshpass netcat-openbsd corkscrew screen python3 python3-certifi make libevent-dev
+sudo apt install -y git openssh-client sshpass netcat-openbsd python3 python3-certifi iptables
 
-# Moteur Sing-Box
+# 2. Moteur Sing-Box (si non installé)
 cd /tmp && wget https://github.com/SagerNet/sing-box/releases/download/v1.14.0/sing-box_1.14.0_linux_amd64.deb && sudo apt install -y ./sing-box_1.14.0_linux_amd64.deb
-```
 
-### 2. Sur Termux (Android)
-
-```bash
-pkg update
-pkg install -y git openssh sshpass netcat-openbsd corkscrew screen python3 make libevent
-pip install certifi
-```
-
-### 3. Téléchargement du projet
-```bash
+# 3. Téléchargement du projet
 git clone https://github.com/RadouaneElarfaoui/omnitunnel-cli.git
 cd omnitunnel-cli
+chmod +x menu.py runvpn.sh install.sh uninstall.sh
 ```
 
 ---
 
 ## 🖥 Utilisation (Méthode Recommandée - Mode CLI Menu)
 
-Le script interactif Python **`menu.py`** vous permet de configurer et de lancer votre connexion VPN avec une interface visuelle animée.
+Si vous avez utilisé l'installateur en une ligne, lancez simplement :
+
+```bash
+otunnel
+```
+
+*(ou `sudo otunnel`)*
+
+Sinon, depuis le dossier cloné du projet :
 
 ```bash
 chmod +x menu.py runvpn.sh
