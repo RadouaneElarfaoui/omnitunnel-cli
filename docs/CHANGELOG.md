@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.1.5
+
+* **Saved profiles permission fix**: `cfgs/saved` is now `777` in the `.deb` payload and `postinst`/`install.sh`, and `ensure_saved_configs_dir()` ensures `777`, so non-sudo `otunnel` can save `.ot` profiles without `Permission denied`.
+
 ## v1.1.4
 
 * **No-sudo configFile fix**: `ConfMake` now writes to `cfgs/configFile` (777) instead of the root install dir (755), and `src/ssh.py` reads from there, so the non-sudo menu (`otunnel`) no longer fails with `Permission denied` on `configFile` creation.

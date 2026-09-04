@@ -56,7 +56,13 @@ def run_as_root(cmd):
 def ensure_saved_configs_dir():
     if not os.path.exists(SAVED_CONFIGS_DIR):
         try:
-            os.makedirs(SAVED_CONFIGS_DIR)
+            os.makedirs(SAVED_CONFIGS_DIR, exist_ok=True)
+            try:
+                os.chmod(SAVED_CONFIGS_DIR, 0o777)
+                # also ensure parent cfgs is 777
+                os.chmod(os.path.dirname(SAVED_CONFIGS_DIR), 0o777)
+            except Exception:
+                pass
         except Exception as e:
             print(f"{C_RED}Error creating configurations directory: {e}{C_RESET}")
 

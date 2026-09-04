@@ -1,6 +1,6 @@
 [English](README.md) | [Français](README.fr.md) | [Español](README.es.md) | [العربية](README.ar.md) | [Português](README.pt.md) | [中文](README.zh.md)
 
-# OmniTunnel CLI (v1.1.4)
+# OmniTunnel CLI (v1.1.5)
 
 [![GitHub license](https://img.shields.io/github/license/RadouaneElarfaoui/omnitunnel-cli?style=flat-square)](LICENSE)
 [![Platform Compatibility](https://img.shields.io/badge/platform-Ubuntu%20%7C%20Debian%20%7C%20Termux-blue?style=flat-square)](#installation)
@@ -23,7 +23,7 @@
 cd /tmp && wget https://github.com/SagerNet/sing-box/releases/download/v1.14.0/sing-box_1.14.0_linux_amd64.deb && sudo apt install -y ./sing-box_1.14.0_linux_amd64.deb
 
 # 2. OmniTunnel CLI
-cd /tmp && wget https://github.com/RadouaneElarfaoui/omnitunnel-cli/releases/download/v1.1.4/omnitunnel-cli_1.1.4.deb && sudo apt install -y ./omnitunnel-cli_1.1.4.deb
+cd /tmp && wget https://github.com/RadouaneElarfaoui/omnitunnel-cli/releases/download/v1.1.5/omnitunnel-cli_1.1.5.deb && sudo apt install -y ./omnitunnel-cli_1.1.5.deb
 
 # 3. Manual install (alternative)
 sudo apt update

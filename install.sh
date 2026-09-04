@@ -183,6 +183,7 @@ fi
 
 # Ensure default directories and configuration
 mkdir -p "$INSTALL_DIR/bin" "$INSTALL_DIR/logs" "$INSTALL_DIR/cfgs/saved"
+chmod 777 "$INSTALL_DIR/cfgs" "$INSTALL_DIR/cfgs/saved" "$INSTALL_DIR/logs" 2>/dev/null || true
 
 # Ensure valid settings.ini
 if [ -f "$INSTALL_DIR/cfgs/settings.ini" ] && head -n 1 "$INSTALL_DIR/cfgs/settings.ini" | grep -q '^{'; then
