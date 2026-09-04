@@ -58,6 +58,8 @@ if ! command -v sing-box &>/dev/null; then
     echo "  wget https://github.com/SagerNet/sing-box/releases/download/v1.14.0/sing-box_1.14.0_linux_amd64.deb"
     echo "  sudo dpkg -i ./sing-box_1.14.0_linux_amd64.deb"
 fi
+update-desktop-database /usr/share/applications 2>/dev/null || true
+gtk-update-icon-cache /usr/share/icons/hicolor 2>/dev/null || true
 POSTINST
 chmod 755 "${CTRL_DIR}/DEBIAN/postinst"
 
@@ -114,6 +116,7 @@ mkdir -p "${PKGDIR}/usr/share/icons/hicolor/scalable/apps"
 mv "${PKGDIR}/opt/omnitunnel-cli/omnitunnel-cli.desktop" "${PKGDIR}/usr/share/applications/"
 mv "${PKGDIR}/opt/omnitunnel-cli/omnitunnel-cli.svg" "${PKGDIR}/usr/share/icons/hicolor/scalable/apps/"
 chmod 644 "${PKGDIR}/usr/share/applications/omnitunnel-cli.desktop"
+chmod 644 "${PKGDIR}/usr/share/icons/hicolor/scalable/apps/omnitunnel-cli.svg"
 
 dpkg-deb --root-owner-group --build "${PKGDIR}"
 cp "${PKGDIR}"*.deb /output/
