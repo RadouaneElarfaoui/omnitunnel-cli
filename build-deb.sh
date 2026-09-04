@@ -3,7 +3,7 @@ set -euo pipefail
 
 IMAGE="omnitunnel-deb-build"
 CONTAINER="omnitunnel-build-container"
-VERSION="1.1.2"
+VERSION="1.1.3"
 ARCH="amd64"
 PKG_NAME="omnitunnel-cli"
 
@@ -52,11 +52,7 @@ cat > "${CTRL_DIR}/otunnel" <<'WRAPPER'
 #!/usr/bin/env bash
 INSTALL_DIR="/opt/omnitunnel-cli"
 cd "$INSTALL_DIR" || exit 1
-if [ "$EUID" -ne 0 ]; then
-    exec sudo python3 "$INSTALL_DIR/menu.py" "$@"
-else
-    exec python3 "$INSTALL_DIR/menu.py" "$@"
-fi
+exec python3 "$INSTALL_DIR/menu.py" "$@"
 WRAPPER
 chmod 755 "${CTRL_DIR}/otunnel"
 
@@ -73,11 +69,7 @@ cat > /usr/local/bin/otunnel <<'OTUNNEL_WRAPPER'
 #!/usr/bin/env bash
 INSTALL_DIR="/opt/omnitunnel-cli"
 cd "$INSTALL_DIR" || exit 1
-if [ "$EUID" -ne 0 ]; then
-    exec sudo python3 "$INSTALL_DIR/menu.py" "$@"
-else
-    exec python3 "$INSTALL_DIR/menu.py" "$@"
-fi
+exec python3 "$INSTALL_DIR/menu.py" "$@"
 OTUNNEL_WRAPPER
 chmod 755 /usr/local/bin/otunnel
 # The desktop session runs as an unprivileged user, so the launcher entry

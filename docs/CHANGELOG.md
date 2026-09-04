@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.1.3
+
+* **No-sudo launcher**: `otunnel` wrapper no longer prefixes `sudo`; the menu opens without a password prompt and only `Run VPN` / `BBR` / `sing-box` elevate via `sudo` internally, matching the desktop `Terminal=true` flow.
+
 ## v1.1.2
 
 * **Tunnel reuse fix**: `src/tunnel.py` now sets `SO_REUSEADDR` before `bind()` and exits cleanly with a logged error instead of falling through to `accept()` with `None` (`Coudn't open socket` / `NoneType accept`). `runvpn.sh` now kills any stale `main.py` before the first bind and sleeps after each `killprocess` so the port is released before the next iteration or next `Run VPN` click.

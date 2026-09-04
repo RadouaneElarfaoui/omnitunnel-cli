@@ -216,11 +216,7 @@ fi
 
 cd "$INSTALL_DIR" || exit 1
 
-if [ "$EUID" -ne 0 ]; then
-    exec sudo python3 "$INSTALL_DIR/menu.py" "$@"
-else
-    exec python3 "$INSTALL_DIR/menu.py" "$@"
-fi
+exec python3 "$INSTALL_DIR/menu.py" "$@"
 EOF
 
 chmod +x "$BIN_LINK"
