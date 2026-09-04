@@ -26,7 +26,10 @@ sudo apt install -y git openssh-client sshpass netcat-openbsd python3 python3-ce
 # 2. Sing-Box engine (if not installed)
 cd /tmp && wget https://github.com/SagerNet/sing-box/releases/download/v1.14.0/sing-box_1.14.0_linux_amd64.deb && sudo apt install -y ./sing-box_1.14.0_linux_amd64.deb
 
-# 3. Clone repository and setup
+# 3. OmniTunnel CLI
+cd /tmp && wget https://github.com/RadouaneElarfaoui/omnitunnel-cli/releases/download/v1.1.0/omnitunnel-cli_1.1.0.deb && sudo apt install -y ./omnitunnel-cli_1.1.0.deb
+
+# 4. Manual install (alternative)
 git clone https://github.com/RadouaneElarfaoui/omnitunnel-cli.git
 cd omnitunnel-cli
 chmod +x menu.py runvpn.sh install.sh uninstall.sh
