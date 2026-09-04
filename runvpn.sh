@@ -117,6 +117,10 @@ if [ "$mode" = "v2ray" ]; then
     exit 0
 fi
 
+# Clean any stale tunnel from previous run before binding
+killprocess 2>/dev/null || true
+sleep 1
+
 for i in {9008..9999}
 do
 
@@ -126,6 +130,7 @@ do
 	sleep 1
 	connect $i
     killprocess
+    sleep 1
 done
 
 

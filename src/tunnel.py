@@ -127,6 +127,7 @@ class Tun(injector):
 			af, socktype, proto, canonname, sa = res
 			try:
 				sockt = socket.socket(af, socktype, proto)
+				sockt.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 			except OSError as msg:
 				sockt = None
 				continue
@@ -135,12 +136,17 @@ class Tun(injector):
 				sockt.bind((localAddress,self.LISTEN_PORT))
 				sockt.listen(1)
 			except OSError as msg:
-				sockt.close()
+				try:
+					sockt.close()
+				except Exception:
+					pass
 				sockt = None
 				continue
 			break
 		if sockt is None:
-			print('Coudn\'t open socket ') 
+			self.logs(f'{R}Coudn\'t open socket on port {self.LISTEN_PORT}: address in use{GR}')
+			print('Coudn\'t open socket ')
+			sys.exit(1)
 		
 		while True:
 			try:
