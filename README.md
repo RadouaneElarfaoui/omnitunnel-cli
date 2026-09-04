@@ -19,17 +19,15 @@
 ### Installation (Debian / Ubuntu)
 
 ```bash
-# 1. Install dependencies
-sudo apt update
-sudo apt install -y git openssh-client sshpass netcat-openbsd python3 python3-certifi iptables
-
-# 2. Sing-Box engine (if not installed)
+# 1. Sing-Box engine (if not installed)
 cd /tmp && wget https://github.com/SagerNet/sing-box/releases/download/v1.14.0/sing-box_1.14.0_linux_amd64.deb && sudo apt install -y ./sing-box_1.14.0_linux_amd64.deb
 
-# 3. OmniTunnel CLI
+# 2. OmniTunnel CLI
 cd /tmp && wget https://github.com/RadouaneElarfaoui/omnitunnel-cli/releases/download/v1.1.4/omnitunnel-cli_1.1.4.deb && sudo apt install -y ./omnitunnel-cli_1.1.4.deb
 
-# 4. Manual install (alternative)
+# 3. Manual install (alternative)
+sudo apt update
+sudo apt install -y git openssh-client sshpass netcat-openbsd python3 python3-certifi iptables
 git clone https://github.com/RadouaneElarfaoui/omnitunnel-cli.git
 cd omnitunnel-cli
 chmod +x menu.py runvpn.sh install.sh uninstall.sh
