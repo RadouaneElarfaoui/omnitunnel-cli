@@ -48,7 +48,6 @@ curl -fsSL https://raw.githubusercontent.com/RadouaneElarfaoui/omnitunnel-cli/ma
 ```bash
 # 1. تثبيت الاعتمادات
 sudo apt update
-sudo apt install -y git openssh-client sshpass netcat-openbsd corkscrew screen python3 python3-certifi
 sudo apt install -y git openssh-client sshpass netcat-openbsd python3 python3-certifi iptables
 
 # 2. محرك Sing-Box (إذا لم يكن مثبتًا)

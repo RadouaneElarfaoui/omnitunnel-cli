@@ -49,10 +49,8 @@ if ! command -v apt-get >/dev/null 2>&1; then
 fi
 
 # ------------------------------------------------------------------------------
-# 3. Check and Install Missing APT Dependencies (No Redundant Downloads)
 # 3. Check and Install Missing APT Dependencies (Strict Essentials Only)
 # ------------------------------------------------------------------------------
-echo -e "${C_BLUE}[*] Checking system dependencies...${C_RESET}"
 echo -e "${C_BLUE}[*] Checking required system dependencies...${C_RESET}"
 
 # Strictly required runtime dependencies:
@@ -63,19 +61,11 @@ echo -e "${C_BLUE}[*] Checking required system dependencies...${C_RESET}"
 # - python3-certifi: SSL certificates
 # - iptables       : network routing & transparent proxy rules
 REQUIRED_PACKAGES=(
-    git
     openssh-client
     sshpass
     netcat-openbsd
-    corkscrew
-    screen
     python3
     python3-certifi
-    curl
-    wget
-    make
-    libevent-dev
-    build-essential
     iptables
 )
 
@@ -99,7 +89,6 @@ if [ ${#MISSING_PACKAGES[@]} -gt 0 ]; then
     export DEBIAN_FRONTEND=noninteractive
     apt-get update -y
     apt-get install -y --no-install-recommends "${MISSING_PACKAGES[@]}"
-    echo -e "${C_GREEN}[✔] All system packages are now installed.${C_RESET}"
     echo -e "${C_GREEN}[✔] All required system packages are now installed.${C_RESET}"
 else
     echo -e "${C_GREEN}[✔] All required system packages are already present. No apt download needed.${C_RESET}"
@@ -177,8 +166,6 @@ elif [ -d "$INSTALL_DIR/.git" ]; then
     cd "$INSTALL_DIR"
     git pull || echo -e "${C_YELLOW}[!] Could not update git repository; keeping current files.${C_RESET}"
 elif [ ! -d "$INSTALL_DIR" ]; then
-    echo -e "    Cloning repository from $REPO_URL..."
-    git clone "$REPO_URL" "$INSTALL_DIR"
     if command -v git >/dev/null 2>&1; then
         echo -e "    Cloning repository via git..."
         git clone --depth 1 "$REPO_URL" "$INSTALL_DIR"
