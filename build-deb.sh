@@ -113,6 +113,7 @@ mkdir -p "${PKGDIR}/usr/share/applications"
 mkdir -p "${PKGDIR}/usr/share/icons/hicolor/scalable/apps"
 mv "${PKGDIR}/opt/omnitunnel-cli/omnitunnel-cli.desktop" "${PKGDIR}/usr/share/applications/"
 mv "${PKGDIR}/opt/omnitunnel-cli/omnitunnel-cli.svg" "${PKGDIR}/usr/share/icons/hicolor/scalable/apps/"
+chmod 644 "${PKGDIR}/usr/share/applications/omnitunnel-cli.desktop"
 
 dpkg-deb --root-owner-group --build "${PKGDIR}"
 cp "${PKGDIR}"*.deb /output/
