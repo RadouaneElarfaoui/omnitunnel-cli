@@ -23,18 +23,6 @@ sudo apt install -y openssh-client sshpass netcat-openbsd corkscrew screen pytho
 # Sing-Box engine
 cd /tmp && wget https://github.com/SagerNet/sing-box/releases/download/v1.14.0/sing-box_1.14.0_linux_amd64.deb && sudo apt install -y ./sing-box_1.14.0_linux_amd64.deb
 ```
-# Termux (Android)
-```bash
-pkg install -y openssh sshpass netcat-openbsd corkscrew screen python3
-pip install certifi
-
-git clone https://github.com/RadouaneElarfaoui/omnitunnel-cli.git
-cd omnitunnel-cli
-```
-
-> **Termux**: device must be rooted.
-
----
 
 ## 🖥 Usage
 
