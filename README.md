@@ -16,31 +16,7 @@
 
 ---
 
-## 🔧 Installation
-
-### ⚡ One-Line Install (Recommended)
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/RadouaneElarfaoui/omnitunnel-cli/main/install.sh | sudo bash
-```
-
-Or with `wget`:
-
-```bash
-wget -qO- https://raw.githubusercontent.com/RadouaneElarfaoui/omnitunnel-cli/main/install.sh | sudo bash
-```
-
-> **Note**: The installer automatically detects already installed packages and Sing-Box, only downloading what is missing.
-
-### 🗑️ One-Line Uninstall
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/RadouaneElarfaoui/omnitunnel-cli/main/uninstall.sh | sudo bash
-```
-
----
-
-### Manual Installation (Debian / Ubuntu)
+### Installation (Debian / Ubuntu)
 
 ```bash
 # 1. Install dependencies
