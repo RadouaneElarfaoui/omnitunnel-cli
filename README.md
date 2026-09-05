@@ -63,17 +63,17 @@ Export/import `.ot` profile files to share configs with others:
 
 ```bash
 # Export active config to .ot
-python3 src/omni_profile.py export -i cfgs/settings.ini -o MyProfile.ot --name "MyServer" --password "secret"
+python3 src/omni_profile.py export -i cfgs/saved/active.ot -o MyProfile.ot --name "MyServer" --password "secret"
 
-# Import .ot file to settings.ini
-python3 src/omni_profile.py import -i MyProfile.ot -o cfgs/settings.ini --password "secret"
+# Import .ot file to active config
+python3 src/omni_profile.py import -i MyProfile.ot -o cfgs/saved/active.ot --password "secret"
 ```
 
 ---
 
 ## ⚙️ Manual Configuration (Headless)
 
-Edit [cfgs/settings.ini](cfgs/settings.ini) directly instead of using the menu, then launch:
+Edit [cfgs/saved/active.ot](cfgs/saved/active.ot) (JSON, via `otunnel` Edit menu) directly instead of using the menu, then launch:
 
 ```bash
 sudo ./runvpn.sh

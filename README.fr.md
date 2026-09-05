@@ -101,17 +101,17 @@ OmniTunnel CLI intègre le support d'exportation et d'importation de fichiers de
 * **Commandes CLI** :
   ```bash
   # Exporter la configuration active vers un fichier .ot
-  python3 src/omni_profile.py export -i cfgs/settings.ini -o MyProfile.ot --name "MonServeur" --password "secret"
+  python3 src/omni_profile.py export -i cfgs/saved/active.ot -o MyProfile.ot --name "MonServeur" --password "secret"
 
-  # Importer un fichier .ot vers settings.ini
-  python3 src/omni_profile.py import -i MyProfile.ot -o cfgs/settings.ini --password "secret"
+  # Importer un fichier .ot vers active.ot
+  python3 src/omni_profile.py import -i MyProfile.ot -o cfgs/saved/active.ot --password "secret"
   ```
 
 ---
 
 ## ⚙️ Configuration Manuelle (Advanced / Headless)
 
-Si vous préférez configurer manuellement le VPN sans utiliser l'interface interactive, éditez le fichier [cfgs/settings.ini](cfgs/settings.ini) :
+Si vous préférez configurer manuellement le VPN sans utiliser l'interface interactive, éditez le fichier [cfgs/saved/active.ot](cfgs/saved/active.ot) :
 
 ### Modes de connexion supportés (`connection_mode`) :
 *   `mode 0` : **Direct SSH** — Tunnel SSH brut sans intermédiaire.

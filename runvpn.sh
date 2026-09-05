@@ -15,8 +15,8 @@ mkdir -p "$PROJECT_DIR/bin"
 export PATH="$PROJECT_DIR/bin:$PATH"
 export PYTHONPATH="$PROJECT_DIR:${PYTHONPATH:-}"
 
-# Engine mode (singbox = default, no compile needed)
-engine=$(grep "engine_mode" "$PROJECT_DIR/cfgs/settings.ini" | awk '{print $3}' | tr -d '\r')
+# Engine mode (singbox = default, no compile needed) — unified active.ot
+engine=$(python3 -c "import sys; sys.path.insert(0, '$PROJECT_DIR'); from src.menu_common import read_config, status_snapshot; print(status_snapshot(read_config())['engine_mode'])" 2>/dev/null || echo singbox)
 
 if [ "$engine" != "redsocks" ]; then
     echo -e "${GREEN}Engine: Sing-Box (no compilation required)${SCOLOR}"
@@ -73,7 +73,7 @@ fi
 clear
 python3 -c "import sys; sys.path.insert(0, '$PROJECT_DIR'); from src.logger import log_session_start; log_session_start()" 2>/dev/null
 
-mode=$(cat "$PROJECT_DIR/cfgs/settings.ini" |grep "connection_mode"| awk '{print $3}')
+mode=$(python3 -c "import sys; sys.path.insert(0, '$PROJECT_DIR'); from src.menu_common import read_config, status_snapshot; print(status_snapshot(read_config())['mode'])" 2>/dev/null || echo 1)
 
 killprocess() {
 echo -e "${RED}[+] KILLING PROCESS...."

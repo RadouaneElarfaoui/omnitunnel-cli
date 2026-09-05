@@ -181,18 +181,18 @@ elif [ ! -d "$INSTALL_DIR" ]; then
     fi
 fi
 
-# Ensure default directories and configuration
+# Ensure default directories and configuration — single writable dir (unified active.ot)
 mkdir -p "$INSTALL_DIR/bin" "$INSTALL_DIR/logs" "$INSTALL_DIR/cfgs/saved"
-chmod 777 "$INSTALL_DIR/cfgs" "$INSTALL_DIR/cfgs/saved" "$INSTALL_DIR/logs" 2>/dev/null || true
+chmod 777 "$INSTALL_DIR/cfgs/saved" "$INSTALL_DIR/logs" 2>/dev/null || true
 
-# Ensure valid settings.ini
-if [ -f "$INSTALL_DIR/cfgs/settings.ini" ] && head -n 1 "$INSTALL_DIR/cfgs/settings.ini" | grep -q '^{'; then
-    echo -e "    Fixing corrupted settings.ini..."
-    rm -f "$INSTALL_DIR/cfgs/settings.ini"
+# Ensure valid active.ot (migrated from settings.ot.example)
+if [ -f "$INSTALL_DIR/cfgs/saved/active.ot" ] && head -n 1 "$INSTALL_DIR/cfgs/saved/active.ot" | grep -q "^\[mode\]"; then
+    echo -e "    Fixing corrupted active.ot (still INI)..."
+    rm -f "$INSTALL_DIR/cfgs/saved/active.ot"
 fi
 
-if [ ! -f "$INSTALL_DIR/cfgs/settings.ini" ] && [ -f "$INSTALL_DIR/cfgs/settings.ot.example" ]; then
-    echo -e "    Generating default settings.ini..."
+if [ ! -f "$INSTALL_DIR/cfgs/saved/active.ot" ] && [ -f "$INSTALL_DIR/cfgs/settings.ot.example" ]; then
+    echo -e "    Generating default active.ot..."
     python3 -c "import sys; sys.path.insert(0, '$INSTALL_DIR'); from src.menu_common import read_config; read_config()" 2>/dev/null || true
 fi
 

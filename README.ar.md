@@ -93,7 +93,7 @@ chmod +x menu.py runvpn.sh
 
 ## ⚙️ الإعداد اليدوي (متقدم / بدون واجهة)
 
-إذا كنت تفضل تهيئة الـ VPN يدويًا دون استخدام الواجهة التفاعلية، فقم بتعديل الملف [cfgs/settings.ini](cfgs/settings.ini):
+إذا كنت تفضل تهيئة الـ VPN يدويًا دون استخدام الواجهة التفاعلية، فقم بتعديل الملف [cfgs/saved/active.ot](cfgs/saved/active.ot):
 
 ### أوضاع الاتصال المدعومة (`connection_mode`):
 *   `mode 0`: **Direct SSH** — نفق SSH خام مباشر بدون وسطاء.

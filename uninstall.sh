@@ -94,9 +94,6 @@ if [ -d "$INSTALL_DIR" ]; then
             echo -e "${C_YELLOW}[!] Found $SAVED_PROFILES saved profile(s). Backing up to $BACKUP_DIR...${C_RESET}"
             mkdir -p "$BACKUP_DIR"
             cp -r "$INSTALL_DIR/cfgs/saved" "$BACKUP_DIR/" 2>/dev/null || true
-            if [ -f "$INSTALL_DIR/cfgs/settings.ini" ]; then
-                cp "$INSTALL_DIR/cfgs/settings.ini" "$BACKUP_DIR/" 2>/dev/null || true
-            fi
             chown -R "$SUDO_USER:$SUDO_USER" "$BACKUP_DIR" 2>/dev/null || true
             echo -e "${C_GREEN}[✔] Configurations backed up to $BACKUP_DIR${C_RESET}"
         fi

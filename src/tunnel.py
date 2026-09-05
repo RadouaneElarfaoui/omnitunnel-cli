@@ -4,7 +4,7 @@ import select
 import configparser,sys,os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import ssl,certifi
-from src.paths import CONFIG_PATH
+from src.menu_common import read_config, status_snapshot
 from .pidkill import handler
 from .inject import injector
 from src.logger import log_tunnel
@@ -20,34 +20,27 @@ Buffer_lenght = 1024 * 4
 class Tun(injector):
 	def __init__(self):
 		self.LISTEN_PORT = int(sys.argv[1])
-		self.configfile = CONFIG_PATH
 
 	def conf(self):
-		config = configparser.ConfigParser()
 		try:
-			with open(self.configfile) as f:
-				config.read_file(f)
+			return read_config()
 		except Exception as e:
 			self.logs(e)
 			raise
-		return config
-		
+		return read_config()
+
 	def extraxt_sni(self,config):
-		sni = config['sni']['server_name']
-		return sni
-		
+		return status_snapshot(config)['sni_server']
+
 	def gethost(self,config):
-		host=config['ssh']['host']
-		return host
-		
+		return status_snapshot(config)['ssh_host']
+
 	def proxy(self,config):
-	    proxyhost = config['Payload']['proxyip']
-	    proxyport = int(config['Payload']['proxyport'])
-	    return [proxyhost,proxyport]
-	    
+		s = status_snapshot(config)
+		return [s['proxy_ip'], int(s['proxy_port'])]
+
 	def conn_mode(self,config):
-		mode = config['mode']['connection_mode']
-		return mode
+		return status_snapshot(config)['mode']
 		
 	def tunneling(self,client,sockt):
 		connected = True

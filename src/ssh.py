@@ -8,7 +8,8 @@ import random
 import shutil
 import threading
 from src.logger import log_ssh, log_singbox, log_tunnel, log_error
-from src.paths import PROJECT_DIR, CONFIG_PATH
+from src.paths import PROJECT_DIR
+from src.menu_common import read_config, status_snapshot
 
 
 # colors
@@ -30,10 +31,10 @@ class sshRunn:
         msg = "".join(x for x in slicemsg)
         self.logs(msg)
 
-    def ssh_client(self,host,port,password,mode,auth_methode):
+    def ssh_client(self,host,port,user,password,mode,auth_method):
             try:
                 socks5_port = 1080
-                dynamic_port_forwarding = '-CND {}'.format(socks5_port)	
+                dynamic_port_forwarding = '-CND {}'.format(socks5_port)
                 inject_host= self.inject_host
                 inject_port= self.inject_port
                 nc_proxies_mode = [f'nc -X CONNECT -x {inject_host}:{inject_port} %h %p',f'corkscrew {inject_host} {inject_port} %h %p']
@@ -50,11 +51,11 @@ class sshRunn:
                         compress = "-C"
                 else:
                     compress =""
-                if str(auth_methode) == "publickey":  
+                if str(auth_method) == "publickey":
                     sshcmd = f"ssh -i {password} {os.path.join(PROJECT_DIR, 'cfgs/publickey.pem')} {proxycmd} useless@{host}"
                     ssh_env = os.environ.copy()
                 else:
-                    sshcmd = f"sshpass -e ssh {proxycmd} -F {os.path.join(PROJECT_DIR, 'cfgs', 'configFile')} host1"
+                    sshcmd = f"sshpass -e ssh {proxycmd} {user}@{host}"
                     ssh_env = {**os.environ, 'SSHPASS': password}
                 perf_opts = "-o Ciphers=chacha20-poly1305@openssh.com,aes128-gcm@openssh.com,aes256-gcm@openssh.com"
                 response = subprocess.Popen(
@@ -108,8 +109,6 @@ class sshRunn:
                 return None
             except Exception as error:
                 print(error)
-    def createConf(self,host,user):
-            _=subprocess.run(["sh", os.path.join(PROJECT_DIR, "ConfMake"),host,user])
 
     def _launch_engine(self):
         engine = getattr(self, 'engine_mode', 'singbox')
@@ -140,7 +139,7 @@ class sshRunn:
         threading.Thread(target=_stream, daemon=True).start()
         return proc
 
-    def create_connection(self,host,port,user,password,mode,auth_methode ):
+    def create_connection(self,host,port,user,password,mode,auth_method ):
         try:
             regx = r'[a-zA-Z0-9_]'
             if mode in ('0', '2') or not (self.proxy[0] and self.proxy[0].strip()):
@@ -164,9 +163,7 @@ class sshRunn:
                 except socket.gaierror as e:
                     self.logs(f"DNS resolution warning for '{host}': {e}")
 
-            self.createConf(host,user)					
-
-            self.ssh_client(host,port,password,mode, auth_methode)
+            self.ssh_client(host,port,user,password,mode, auth_method)
 
         except ConnectionRefusedError:     
             self.logs("CONNECTION REFUSED")
@@ -178,26 +175,20 @@ class sshRunn:
         log_ssh(str(log))
 
     def main(self):
-
-        config = configparser.ConfigParser()
-        with open(CONFIG_PATH) as _cfg_fh:
-            config.read_file(_cfg_fh)	
-        host = config['ssh']['host']
-        mode = config['mode']['connection_mode']
-        port = config['ssh']['port']
-        user = config['ssh']['username']
-        password = config['ssh']['password']
-        self.enableCompress = config['ssh']['enable_compression']
-        auth_methode = config['ssh']['auth_methode']
-        self.engine_mode = config.get('engine', 'engine_mode', fallback='singbox')
-
-        self.payload = config['Payload']['payload']
-        self.proxy =(config['Payload']['proxyip'],config['Payload']['proxyport'])
-        if mode in ("2" , "3"):
-            self.sni = config['sni']['server_name']
-        else:
-            self.sni = False
-        self.create_connection(host,port,user,password,mode,auth_methode)
+        config = read_config()
+        s = status_snapshot(config)
+        host = s['ssh_host']
+        mode = s['mode']
+        port = s['ssh_port']
+        user = s['ssh_user']
+        password = config.get('ssh', 'password', fallback='')
+        self.enableCompress = s['ssh_compress']
+        auth_method = s['ssh_auth']
+        self.engine_mode = s['engine_mode']
+        self.payload = s['payload']
+        self.proxy = (s['proxy_ip'], s['proxy_port'])
+        self.sni = s['sni_server'] if mode in ("2", "3") else False
+        self.create_connection(host,port,user,password,mode,auth_method)
 
 
 

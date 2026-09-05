@@ -94,7 +94,7 @@ chmod +x menu.py runvpn.sh
 
 ## ⚙️ 手动配置（高级 / 无头模式）
 
-如果您更喜欢在不使用交互式界面的情况下手动配置 VPN，请编辑 [cfgs/settings.ini](cfgs/settings.ini) 文件：
+如果您更喜欢在不使用交互式界面的情况下手动配置 VPN，请编辑 [cfgs/saved/active.ot](cfgs/saved/active.ot) 文件：
 
 ### 支持的连接模式 (`connection_mode`)：
 *   `mode 0`：**Direct SSH** — 无中介的原始 SSH 隧道。

@@ -94,7 +94,7 @@ Al igual que la aplicación HTTP Custom en Android, configure sus túneles y per
 
 ## ⚙️ Configuración Manual (Avanzada / Headless)
 
-Si prefiere configurar la VPN manualmente sin utilizar la interfaz interactiva, edite el archivo [cfgs/settings.ini](cfgs/settings.ini):
+Si prefiere configurar la VPN manualmente sin utilizar la interfaz interactiva, edite el archivo [cfgs/saved/active.ot](cfgs/saved/active.ot):
 
 ### Modos de conexión admitidos (`connection_mode`):
 *   `mode 0`: **Direct SSH** — Túnel SSH nativo/bruto sin intermediarios.

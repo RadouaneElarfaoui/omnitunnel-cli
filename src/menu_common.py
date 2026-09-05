@@ -13,6 +13,8 @@ from src.omni_profile import (
     export_profile_to_omni,
     import_profile_from_omni,
     save_omni_to_ini_file,
+    config_to_dict,
+    dict_to_configparser,
     InvalidPasswordError,
     InvalidProfileFormatError
 )
@@ -89,7 +91,7 @@ def status_snapshot(config):
     ssh_port = config.get('ssh', 'port', fallback='None')
     ssh_user = config.get('ssh', 'username', fallback='None')
     ssh_compress = config.get('ssh', 'enable_compression', fallback='n')
-    ssh_auth = config.get('ssh', 'auth_methode', fallback='password')
+    ssh_auth = config.get('ssh', 'auth_method', fallback='password')
     proxy_ip = config.get('Payload', 'proxyip', fallback='None')
     proxy_port = config.get('Payload', 'proxyport', fallback='None')
     sni_server = config.get('sni', 'server_name', fallback='None')
@@ -134,8 +136,6 @@ def ensure_saved_configs_dir():
             os.makedirs(SAVED_CONFIGS_DIR, exist_ok=True)
             try:
                 os.chmod(SAVED_CONFIGS_DIR, 0o777)
-                # also ensure parent cfgs is 777
-                os.chmod(os.path.dirname(SAVED_CONFIGS_DIR), 0o777)
             except Exception:
                 pass
         except Exception as e:
@@ -151,20 +151,30 @@ def clear_screen():
 
 
 def read_config():
-    config = configparser.ConfigParser()
-    if not os.path.exists(CONFIG_PATH) and os.path.exists(CONFIG_EXAMPLE_PATH):
+    if os.path.exists(CONFIG_PATH):
         try:
-            cfg_dict, _ = import_profile_from_omni(CONFIG_EXAMPLE_PATH)
-            save_omni_to_ini_file(cfg_dict, CONFIG_PATH)
+            cfg_dict, _ = import_profile_from_omni(CONFIG_PATH)
+            return dict_to_configparser(cfg_dict)
         except Exception:
             pass
-    config.read(CONFIG_PATH)
-    return config
+    if os.path.exists(CONFIG_EXAMPLE_PATH):
+        try:
+            cfg_dict, _ = import_profile_from_omni(CONFIG_EXAMPLE_PATH)
+            ensure_saved_configs_dir()
+            cfg = dict_to_configparser(cfg_dict)
+            try:
+                export_profile_to_omni(cfg, profile_name="active", output_path=CONFIG_PATH)
+            except Exception:
+                pass
+            return cfg
+        except Exception:
+            pass
+    return configparser.ConfigParser()
 
 
 def write_config(config):
-    with open(CONFIG_PATH, 'w') as configfile:
-        config.write(configfile)
+    ensure_saved_configs_dir()
+    export_profile_to_omni(config, profile_name="active", output_path=CONFIG_PATH)
 
 
 def get_mode_name(mode):

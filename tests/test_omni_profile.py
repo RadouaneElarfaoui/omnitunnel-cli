@@ -33,7 +33,7 @@ class TestOmniProfile(unittest.TestCase):
                 "username": "testuser",
                 "password": "secretpassword123",
                 "enable_compression": "n",
-                "auth_methode": "password"
+                "auth_method": "password"
             },
             "Payload": {
                 "payload": "GET / HTTP/1.1[crlf]Host: [host][crlf]",

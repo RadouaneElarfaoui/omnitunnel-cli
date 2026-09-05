@@ -62,7 +62,7 @@ set -e
 ID="/opt/omnitunnel-cli"
 mkdir -p "${ID}/bin" "${ID}/logs" "${ID}/cfgs/saved"
 touch "${ID}/cfgs/saved/.gitkeep"
-chmod 777 "${ID}/cfgs" "${ID}/cfgs/saved" "${ID}/logs"
+chmod 777 "${ID}/cfgs/saved" "${ID}/logs"
 # Launcher wrapper (also shipped as /usr/local/bin/otunnel inside the .deb;
 # re-created here so upgrades/repairs always leave a working entry point).
 cat > /usr/local/bin/otunnel <<'OTUNNEL_WRAPPER'
@@ -138,7 +138,7 @@ touch "${PKGDIR}/opt/omnitunnel-cli/cfgs/saved/.gitkeep"
 # under /opt must be world-readable/traversable (source checkouts often
 # carry 600/700 modes which would break imports AND hide the launcher entry).
 find "${PKGDIR}/opt/omnitunnel-cli" -type d -exec chmod 755 {} +
-chmod 777 "${PKGDIR}/opt/omnitunnel-cli/cfgs" "${PKGDIR}/opt/omnitunnel-cli/cfgs/saved" "${PKGDIR}/opt/omnitunnel-cli/logs"
+chmod 777 "${PKGDIR}/opt/omnitunnel-cli/cfgs/saved" "${PKGDIR}/opt/omnitunnel-cli/logs"
 find "${PKGDIR}/opt/omnitunnel-cli" -type f -exec chmod 644 {} +
 
 chmod 755 "${PKGDIR}/opt/omnitunnel-cli/runvpn.sh"

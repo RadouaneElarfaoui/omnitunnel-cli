@@ -22,6 +22,8 @@ from src.omni_profile import (
     export_profile_to_omni,
     import_profile_from_omni,
     save_omni_to_ini_file,
+    dict_to_configparser,
+    config_to_dict,
     InvalidPasswordError,
     InvalidProfileFormatError
 )
@@ -85,7 +87,7 @@ def _do_export(config_to_export, default_name):
 
 def _export_saved_library(mode):
     ensure_saved_configs_dir()
-    configs = [f[:-4] for f in os.listdir(SAVED_CONFIGS_DIR) if f.endswith('.ini')]
+    configs = [f[:-3] for f in os.listdir(SAVED_CONFIGS_DIR) if f.endswith('.ot')]
     if not configs:
         print(f"\n{C_YELLOW}No saved configurations found to export.{C_RESET}")
         input("\nPress Enter to continue...")
@@ -94,11 +96,9 @@ def _export_saved_library(mode):
     if choice is None:
         return
     try:
-        target_cfg = choice
-        src_path = os.path.join(SAVED_CONFIGS_DIR, f"{target_cfg}.ini")
-        parser = configparser.ConfigParser()
-        parser.read(src_path)
-        _do_export(parser, target_cfg)
+        src_path = os.path.join(SAVED_CONFIGS_DIR, f"{choice}.ot")
+        cfg_dict, _ = import_profile_from_omni(src_path)
+        _do_export(dict_to_configparser(cfg_dict), choice)
     except Exception as e:
         print(f"\n{C_RED}Error reading profile: {e}{C_RESET}")
         input("\nPress Enter to continue...")
@@ -107,7 +107,7 @@ def _export_saved_library(mode):
 def menu_export(mode):
     ensure_saved_configs_dir()
     configs = sorted(
-        [f[:-4] for f in os.listdir(SAVED_CONFIGS_DIR) if f.endswith('.ini')]
+        [f[:-3] for f in os.listdir(SAVED_CONFIGS_DIR) if f.endswith('.ot')]
     ) if os.path.isdir(SAVED_CONFIGS_DIR) else []
     # collapsed: single list with Current + library (was 2-option submenu)
     if not configs:
@@ -120,11 +120,10 @@ def menu_export(mode):
     if choice == "▶ Current Active Configuration":
         _do_export(read_config(), "Active_Config")
     else:
-        src_path = os.path.join(SAVED_CONFIGS_DIR, f"{choice}.ini")
+        src_path = os.path.join(SAVED_CONFIGS_DIR, f"{choice}.ot")
         try:
-            parser = configparser.ConfigParser()
-            parser.read(src_path)
-            _do_export(parser, choice)
+            cfg_dict, _ = import_profile_from_omni(src_path)
+            _do_export(dict_to_configparser(cfg_dict), choice)
         except Exception as e:
             print(f"\n{C_RED}Error reading profile: {e}{C_RESET}")
             input("\nPress Enter to continue...")
@@ -175,7 +174,7 @@ def menu_import_omni(mode):
         print(f"  {C_BOLD}Description:{C_RESET}  {meta.get('note')}")
 
     options = [
-        ('1', 'Set as Active Configuration (overwrites settings.ini)', break_after(lambda: _import_set_active(config_dict))),
+        ('1', 'Set as Active Configuration (overwrites active.ot)', break_after(lambda: _import_set_active(config_dict))),
         ('2', 'Save to Profile Library', break_after(lambda: _import_save_library(config_dict, meta))),
         ('3', 'Both (Active Config + Profile Library)', break_after(lambda: _import_both(config_dict, meta))),
         ('B', 'Cancel Import', STATUS_BREAK),
@@ -185,7 +184,7 @@ def menu_import_omni(mode):
 
 def _import_set_active(config_dict):
     try:
-        save_omni_to_ini_file(config_dict, CONFIG_PATH)
+        write_config(dict_to_configparser(config_dict))
         print(f"  {C_GREEN}Active configuration updated!{C_RESET}")
     except Exception as e:
         print(f"  {C_RED}Error setting active configuration: {e}{C_RESET}")
@@ -198,9 +197,9 @@ def _import_save_library(config_dict, meta):
     custom_name = input(f"Enter profile library name [{profile_name}]: ").strip()
     if custom_name:
         profile_name = clean_filename(custom_name)
-    lib_path = os.path.join(SAVED_CONFIGS_DIR, f"{profile_name}.ini")
+    lib_path = os.path.join(SAVED_CONFIGS_DIR, f"{profile_name}.ot")
     try:
-        save_omni_to_ini_file(config_dict, lib_path)
+        export_profile_to_omni(dict_to_configparser(config_dict), profile_name=profile_name, output_path=lib_path)
         print(f"  {C_GREEN}Profile saved to library as '{profile_name}'!{C_RESET}")
     except Exception as e:
         print(f"  {C_RED}Error saving profile to library: {e}{C_RESET}")
@@ -281,7 +280,7 @@ def _save_config():
 def _load_config(mode):
     ensure_saved_configs_dir()
     files = sorted(os.listdir(SAVED_CONFIGS_DIR))
-    configs = [f for f in files if f.endswith(('.ot', '.omni', '.json'))]
+    configs = [f for f in files if f.endswith(('.ot', '.json'))]
     if not configs:
         print(f"\n{C_YELLOW}No saved configurations found.{C_RESET}")
         input("\nPress Enter to continue...")
@@ -297,9 +296,10 @@ def _load_config(mode):
             _set_config('v2ray', 'v2ray_config', src_path)
             _set_config('v2ray', 'active_remark', target_file[:-5])
             print(f"\n{C_GREEN}V2Ray/Xray Profile '{target_file[:-5]}' loaded as active!{C_RESET}")
-        elif target_file.endswith(('.ot', '.omni')):
+        elif target_file.endswith('.ot'):
             config_dict, meta = import_profile_from_omni(src_path)
-            save_omni_to_ini_file(config_dict, CONFIG_PATH)
+            # unified: active is .ot JSON
+            write_config(dict_to_configparser(config_dict))
             print(f"\n{C_GREEN}Profile '{meta['profile_name']}' (.ot) loaded successfully!{C_RESET}")
     except Exception as e:
         print(f"\n{C_RED}Error loading configuration: {e}{C_RESET}")
@@ -309,7 +309,7 @@ def _load_config(mode):
 def _delete_config(mode):
     ensure_saved_configs_dir()
     files = sorted(os.listdir(SAVED_CONFIGS_DIR))
-    configs = [f for f in files if f.endswith(('.ot', '.omni', '.json'))]
+    configs = [f for f in files if f.endswith(('.ot', '.json'))]
     if not configs:
         print(f"\n{C_YELLOW}No saved configurations found to delete.{C_RESET}")
         input("\nPress Enter to continue...")
@@ -458,9 +458,9 @@ def _edit_proxy_inline():
 
 
 def _edit_auth():
-    cur = read_config().get('ssh', 'auth_methode', fallback='password')
+    cur = read_config().get('ssh', 'auth_method', fallback='password')
     new = 'publickey' if cur == 'password' else 'password'
-    _set_config('ssh', 'auth_methode', new)
+    _set_config('ssh', 'auth_method', new)
 
 
 def _edit_compression():

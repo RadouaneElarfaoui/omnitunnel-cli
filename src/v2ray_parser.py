@@ -317,12 +317,10 @@ def generate_v2ray_singbox_config(outbound_dict: dict, tun_interface="tun0") -> 
 
     log_level = "warn"
     try:
-        settings = configparser.ConfigParser()
-        settings.read(os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            'cfgs', 'settings.ini'
-        ))
-        candidate = settings.get('engine', 'singbox_log_level', fallback='warn').strip().lower()
+        import sys
+        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        from src.menu_common import read_config, status_snapshot
+        candidate = status_snapshot(read_config())['sb_log_level'].strip().lower()
         if candidate in ("info", "debug", "warn", "error"):
             log_level = candidate
     except Exception:
