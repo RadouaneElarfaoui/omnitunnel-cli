@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.2
+
+* **Unified config + main-menu Load**: single active store `cfgs/saved/active.ot` (JSON `.ot` via `import_profile_from_omni`/`export_profile_to_omni` + `status_snapshot`/`read_config`/`write_config`); single `.ot` library (`.ini` dropped); `src/ssh.py` builds `ssh` cmd directly (drop `ConfMake`/`cfgs/configFile` shim + `auth_methode` fallback); `runvpn.sh`/`install.sh`/`uninstall.sh`/`v2ray_parser` read via `status_snapshot`; `SAVED_CONFIGS_DIR` is the only `777` dir (remove `cfgs` 777 fork) in `ensure_saved_configs_dir`/`install.sh`/`build-deb.sh` (`build-deb.sh` postinst + payload fixed); `cfgs/settings.ot.example` is the only fallback renderer; `build-deb.sh` still slim. **Menu**: main menu now `1 Run / 2 Edit / 3 Load (silent)` — `Load` is the same library picker as `Profiles → Load` but silent (no `loaded successfully`/`Press Enter`) and starts with `📂 Open Folder` (`xdg-open cfgs/saved`, loops back); both pickers now share the open-folder header (`xdg-open` via `Popen` `start_new_session`).
+
 ## v1.1.7
 
 * **Menu rework — no duplication, inline editing, toggles**: `Edit` now shows the same `Current Configuration` lines as the main overview but selectable (↑↓ cycles the preview lines); `VPN Engine`/`Log Level` moved to bottom (rarely changed); `Proxy Server` edits inline (`ip:port` prefilled) instead of submenu; `Password`/`auth` remain inline with `readline` prefill for in-place edit (fix `Edit Proxy [ip:port]: …` duplication); `Auth Method`/`Compression`/`Engine` collapsed from 2-option submenus to direct toggles; `Export Profile` collapsed from 2-option submenu to single pick-list (`▶ Current` + library); removed redundant `Connection mode updated / Press Enter` confirms for trivial selects; `menu_common` centralizes `status_snapshot`/`input_editable`/`stay_after`/`break_after` and fixes arrow-menu highlight memory (`←/Esc` → Back); `build-deb.sh` already slim.
