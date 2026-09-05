@@ -2,6 +2,7 @@
 import os
 import sys
 import json
+import shutil
 import configparser
 import getpass
 import subprocess
@@ -257,6 +258,115 @@ def menu_import_v2ray(mode):
     input("\nPress Enter to continue...")
 
 
+def _pick_file_via_portal():
+    """Portal-only file picker — no input() fallback."""
+    # 1) zenity (uses portal on Wayland/GNOME)
+    if shutil.which("zenity"):
+        try:
+            out = subprocess.run(
+                ["zenity", "--file-selection", "--title=Select .ot file", "--file-filter=OmniTunnel profiles | *.ot *.omni"],
+                capture_output=True, text=True
+            )
+            if out.returncode == 0:
+                p = out.stdout.strip()
+                if p:
+                    return p
+            return None  # cancelled or portal closed
+        except Exception:
+            return None
+    # 2) kdialog (KDE portal)
+    if shutil.which("kdialog"):
+        try:
+            out = subprocess.run(
+                ["kdialog", "--getopenfilename", os.path.expanduser("~"), "*.ot *.omni | OmniTunnel profiles"],
+                capture_output=True, text=True
+            )
+            if out.returncode == 0:
+                p = out.stdout.strip()
+                if p:
+                    return p
+            return None
+        except Exception:
+            return None
+    # 3) gdbus direct portal (no fallback to input)
+    if shutil.which("gdbus"):
+        try:
+            # minimal portal call — handle is async; use gdbus to open chooser
+            # we use a simple timeout; if portal not available just fail
+            out = subprocess.run(
+                ["gdbus", "call", "--session", "--dest", "org.freedesktop.portal.Desktop",
+                 "--object-path", "/org/freedesktop/portal/desktop",
+                 "--method", "org.freedesktop.portal.FileChooser.OpenFile",
+                 "", "Select .ot file", "{'handle_token': <'omni1'>}"],
+                capture_output=True, text=True, timeout=30
+            )
+            # portal reply is a handle; actual file comes via signal — not parsed here
+            # if we reach here without zenity/kdialog, portal is present but not usable sync
+            return None
+        except Exception:
+            return None
+    return None
+
+
+def menu_import_omni_portal(mode):
+    _frame()
+    file_path = _pick_file_via_portal()
+    if not file_path:
+        print(f"\n{C_YELLOW}No file selected or portal unavailable.{C_RESET}")
+        input("\nPress Enter to continue...")
+        return
+    if not os.path.exists(file_path):
+        print(f"\n{C_RED}File not found: '{file_path}'{C_RESET}")
+        input("\nPress Enter to continue...")
+        return
+    password = None
+    attempt = 0
+    config_dict = None
+    meta = None
+    while attempt < 3:
+        try:
+            config_dict, meta = import_profile_from_omni(file_path, password=password)
+            break
+        except InvalidPasswordError:
+            attempt += 1
+            if attempt >= 3:
+                print(f"\n{C_RED}Maximum password attempts exceeded.{C_RESET}")
+                input("\nPress Enter to continue...")
+                return
+            password = getpass.getpass(f"\nThis profile is password protected. Enter password (Attempt {attempt}/3): ").strip()
+        except InvalidProfileFormatError as e:
+            print(f"\n{C_RED}Invalid profile format: {e}{C_RESET}")
+            input("\nPress Enter to continue...")
+            return
+        except Exception as e:
+            print(f"\n{C_RED}Error importing profile: {e}{C_RESET}")
+            input("\nPress Enter to continue...")
+            return
+    if not config_dict or not meta:
+        return
+    # save to library same name as picked file, then go to load menu
+    ensure_saved_configs_dir()
+    base = os.path.splitext(os.path.basename(file_path))[0]
+    profile_name = clean_filename(base or meta.get("profile_name") or "Imported_Profile") or "Imported_Profile"
+    lib_path = os.path.join(SAVED_CONFIGS_DIR, f"{profile_name}.ot")
+    try:
+        export_profile_to_omni(dict_to_configparser(config_dict), profile_name=profile_name, output_path=lib_path)
+    except Exception as e:
+        print(f"\n{C_RED}Error saving to library: {e}{C_RESET}")
+        input("\nPress Enter to continue...")
+        return
+    _load_config(mode, silent=True)
+
+
+def menu_import_main(mode):
+    options = [
+        ('1', '.ot File (portal file picker)', stay_after(lambda: menu_import_omni_portal(mode))),
+        ('2', 'Xray Share Link (vless, vmess, trojan, ss, hy2)', stay_after(lambda: menu_import_v2ray(mode))),
+        ('B', '← Back', STATUS_BREAK),
+    ]
+    run_menu("Import  —  choose source", options, mode=mode)
+
+
 # ---------------------------------------------------------------------------
 # Manage configurations
 # ---------------------------------------------------------------------------
@@ -289,6 +399,26 @@ def _open_saved_folder():
         input("\nPress Enter to continue...")
     except Exception as e:
         print(f"\n{C_RED}Failed to open folder: {e}{C_RESET}")
+        input("\nPress Enter to continue...")
+
+
+def _open_active_config():
+    ensure_saved_configs_dir()
+    # ensure active.ot exists (created from example if missing)
+    try:
+        _ = read_config()
+    except Exception:
+        pass
+    try:
+        subprocess.Popen(
+            ["xdg-open", CONFIG_PATH],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True
+        )
+    except FileNotFoundError:
+        print(f"\n{C_YELLOW}xdg-open not found — file: {CONFIG_PATH}{C_RESET}")
+        input("\nPress Enter to continue...")
+    except Exception as e:
+        print(f"\n{C_RED}Failed to open file: {e}{C_RESET}")
         input("\nPress Enter to continue...")
 
 
@@ -363,11 +493,7 @@ def menu_manage_configs(mode):
     ensure_saved_configs_dir()
     options = [
         ('1', 'Save Current Configuration', stay_after(_save_config)),
-        ('2', 'Load / Open Configuration', stay_after(lambda: _load_config(mode))),
-        ('3', 'Delete Configuration', stay_after(lambda: _delete_config(mode))),
-        ('4', 'Export Profile to .ot File', stay_after(lambda: menu_export(mode))),
-        ('5', 'Import Profile from .ot File', stay_after(lambda: menu_import_omni(mode))),
-        ('6', 'Import V2Ray / Xray Share Link (vless, vmess, trojan, ss, hy2)', stay_after(lambda: menu_import_v2ray(mode))),
+        ('2', 'Delete Configuration', stay_after(lambda: _delete_config(mode))),
         ('B', '← Back', STATUS_BREAK),
     ]
     run_menu("Profiles  —  manage saved configurations", options, mode=mode)
@@ -717,6 +843,9 @@ def menu_edit(mode):
     def lab_sni():
         return f"SNI Host          {C_YELLOW}{status_snapshot(read_config())['sni_server']}{C_RESET}"
 
+    def lab_open_raw():
+        return f"Open Raw Config   {C_CYAN}active.ot in editor{C_RESET}"
+
     # Actions: each line edits the underlying field(s); composite lines
     # open the focused inline submenu so you still cycle the same preview.
     # VPN Engine / Log Level at bottom (rarely changed) — mirrors
@@ -730,6 +859,7 @@ def menu_edit(mode):
         ('6', lab_sni,        stay_after(functools.partial(_edit_val, 'sni', 'server_name', 'SNI Host'))),
         ('7', lab_engine,     stay_after(functools.partial(menu_edit_engine, mode))),
         ('8', lab_log,        stay_after(functools.partial(_log_level_menu, mode))),
+        ('9', lab_open_raw,   stay_after(_open_active_config)),
         ('B', '← Back', STATUS_BREAK),
     ]
 
@@ -790,9 +920,10 @@ def menu_main(mode):
             ('1', 'Run VPN', stay_after(lambda: menu_start_vpn(mode))),
             ('2', 'Edit', stay_after(lambda: menu_edit(mode))),
             ('3', 'Load', stay_after(lambda: _load_config(mode, silent=True))),
-            ('4', 'Profiles', stay_after(lambda: menu_manage_configs(mode))),
-            ('5', 'Logs', stay_after(lambda: menu_view_logs(mode))),
-            ('6', 'Exit', _do_exit),
+            ('4', 'Import', stay_after(lambda: menu_import_main(mode))),
+            ('5', 'Profiles', stay_after(lambda: menu_manage_configs(mode))),
+            ('6', 'Logs', stay_after(lambda: menu_view_logs(mode))),
+            ('7', 'Exit', _do_exit),
         ]
 
         def render():
