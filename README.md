@@ -24,8 +24,10 @@ cd /tmp && wget https://github.com/SagerNet/sing-box/releases/download/v1.14.0/s
 
 # 2. OmniTunnel CLI
 cd /tmp && wget https://github.com/RadouaneElarfaoui/omnitunnel-cli/releases/download/v1.1.7/omnitunnel-cli_1.1.7.deb && sudo apt install -y ./omnitunnel-cli_1.1.7.deb
+```
+### Manual installation
 
-# 3. Manual install (alternative)
+```bash
 sudo apt update
 sudo apt install -y git openssh-client sshpass netcat-openbsd python3 python3-certifi iptables
 git clone https://github.com/RadouaneElarfaoui/omnitunnel-cli.git
