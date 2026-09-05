@@ -96,6 +96,8 @@ def status_snapshot(config):
     proxy_port = config.get('Payload', 'proxyport', fallback='None')
     sni_server = config.get('sni', 'server_name', fallback='None')
     payload = config.get('Payload', 'payload', fallback='None')
+    v2ray_config = config.get('v2ray', 'v2ray_config', fallback='None')
+    v2ray_remark = config.get('v2ray', 'active_remark', fallback='None')
     return {
         'mode': mode,
         'mode_name': get_mode_name(mode),
@@ -111,6 +113,8 @@ def status_snapshot(config):
         'proxy_port': proxy_port,
         'sni_server': sni_server,
         'payload': payload,
+        'v2ray_config': v2ray_config,
+        'v2ray_remark': v2ray_remark,
     }
 
 
@@ -189,15 +193,38 @@ def show_header():
 
 def print_current_status(config):
     s = status_snapshot(config)
+    # fixed label width so all values start at same column; hide rows not used by current mode
+    W = 18
+    mode = str(s['mode'])
     print(f"\n{C_BOLD}Current Configuration:{C_RESET}")
-    print(f"  {C_BOLD}Connection Mode:{C_RESET} {C_GREEN}{s['mode_name']}{C_RESET}")
-    print(f"  {C_BOLD}SSH Server:{C_RESET}      {C_YELLOW}{s['ssh_host']}:{s['ssh_port']}{C_RESET} ({s['ssh_user']})")
-    print(f"  {C_BOLD}SSH Auth Method:{C_RESET} {C_YELLOW}{s['ssh_auth']}{C_RESET} | {C_BOLD}Compression:{C_RESET} {C_YELLOW}{s['ssh_compress']}{C_RESET}")
-    print(f"  {C_BOLD}Proxy Server:{C_RESET}    {C_YELLOW}{s['proxy_ip']}:{s['proxy_port']}{C_RESET}")
-    print(f"  {C_BOLD}Payload:{C_RESET}         {C_YELLOW}{s['payload']}{C_RESET}")
-    print(f"  {C_BOLD}SNI Host:{C_RESET}        {C_YELLOW}{s['sni_server']}{C_RESET}")
-    print(f"  {C_BOLD}VPN Engine:{C_RESET}        {C_CYAN}{s['engine_label']}{C_RESET}")
-    print(f"  {C_BOLD}Sing-Box Log Level:{C_RESET} {C_CYAN}{s['sb_log_level']}{C_RESET}")
+    print(f"  {C_BOLD}{'Connection Mode:':<{W}}{C_RESET} {C_GREEN}{s['mode_name']}{C_RESET}")
+    # v2ray mode — show only v2ray profile, not SSH/proxy/payload/SNI
+    if mode == 'v2ray':
+        remark = s.get('v2ray_remark') or '—'
+        cfg_path = s.get('v2ray_config') or '—'
+        # keep aligned: show remark and truncate path
+        print(f"  {C_BOLD}{'V2Ray Profile:':<{W}}{C_RESET} {C_YELLOW}{remark}{C_RESET}")
+        # show config path as secondary if not default
+        if cfg_path and cfg_path != 'None' and cfg_path != remark:
+            short = cfg_path if len(cfg_path) <= 40 else '…' + cfg_path[-39:]
+            print(f"  {C_BOLD}{'V2Ray Config:':<{W}}{C_RESET} {C_YELLOW}{short}{C_RESET}")
+        print(f"  {C_BOLD}{'VPN Engine:':<{W}}{C_RESET} {C_CYAN}{s['engine_label']}{C_RESET}")
+        print(f"  {C_BOLD}{'Sing-Box Log:':<{W}}{C_RESET} {C_CYAN}{s['sb_log_level']}{C_RESET}")
+        print(f"{C_CYAN}-----------------------------------------------------------{C_RESET}")
+        return
+    print(f"  {C_BOLD}{'SSH Server:':<{W}}{C_RESET} {C_YELLOW}{s['ssh_host']}:{s['ssh_port']}{C_RESET} ({s['ssh_user']})")
+    # Proxy/Payload only for HTTP modes 1 and 3
+    if mode in ('1', '3'):
+        print(f"  {C_BOLD}{'Proxy Server:':<{W}}{C_RESET} {C_YELLOW}{s['proxy_ip']}:{s['proxy_port']}{C_RESET}")
+        print(f"  {C_BOLD}{'Payload:':<{W}}{C_RESET} {C_YELLOW}{s['payload']}{C_RESET}")
+    # SNI only for TLS modes 2 and 3
+    if mode in ('2', '3'):
+        print(f"  {C_BOLD}{'SNI Host:':<{W}}{C_RESET} {C_YELLOW}{s['sni_server']}{C_RESET}")
+    print(f"  {C_BOLD}{'SSH Auth Method:':<{W}}{C_RESET} {C_YELLOW}{s['ssh_auth']}{C_RESET}")
+    comp_label = "enabled" if str(s['ssh_compress']).lower() == 'y' else "disabled"
+    print(f"  {C_BOLD}{'SSH Compression:':<{W}}{C_RESET} {C_YELLOW}{comp_label} ({s['ssh_compress']}){C_RESET}")
+    print(f"  {C_BOLD}{'VPN Engine:':<{W}}{C_RESET} {C_CYAN}{s['engine_label']}{C_RESET}")
+    print(f"  {C_BOLD}{'Sing-Box Log:':<{W}}{C_RESET} {C_CYAN}{s['sb_log_level']}{C_RESET}")
     print(f"{C_CYAN}-----------------------------------------------------------{C_RESET}")
 
 

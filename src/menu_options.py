@@ -517,7 +517,7 @@ def menu_edit_connection_mode(mode):
         ('3', _lab('3', 'TLS → HTTP → SSH (https)'), break_after(functools.partial(_set_mode, '3'))),
         ('B', '← Back', STATUS_BREAK),
     ]
-    run_menu("Select Connection Mode  —  ● marks active", options, mode=mode)
+    run_menu("Select Connection Mode", options, mode=mode)
 
 
 def _set_mode(mode_val):
@@ -709,7 +709,7 @@ def _log_level_menu(mode):
         ('4', _lab('error', 'error  (quietest)'), break_after(functools.partial(_set_log_level, 'error'))),
         ('B', '← Back', STATUS_BREAK),
     ]
-    run_menu("Sing-Box Log Level  —  ● marks active", options, mode=mode)
+    run_menu("Sing-Box Log", options, mode=mode)
 
 
 def _set_log_level(level):
@@ -724,7 +724,7 @@ def menu_edit_engine(mode):
 
     def lab_log():
         v = read_config().get('engine', 'singbox_log_level', fallback='warn')
-        return f"Log Level    {C_CYAN}{v}{C_RESET}"
+        return f"Sing-Box Log {C_CYAN}{v}{C_RESET}"
 
     options = [
         ('1', lab_engine, stay_after(_toggle_engine)),
@@ -818,7 +818,7 @@ def menu_edit(mode):
         return f"VPN Engine        {C_CYAN}{status_snapshot(read_config())['engine_label']}{C_RESET}"
 
     def lab_log():
-        return f"Sing-Box Log Level {C_CYAN}{status_snapshot(read_config())['sb_log_level']}{C_RESET}"
+        return f"Sing-Box Log      {C_CYAN}{status_snapshot(read_config())['sb_log_level']}{C_RESET}"
 
     def lab_mode():
         return f"Connection Mode   {C_GREEN}{status_snapshot(read_config())['mode_name']}{C_RESET}"
@@ -829,7 +829,12 @@ def menu_edit(mode):
 
     def lab_ssh_auth():
         s = status_snapshot(read_config())
-        return f"SSH Auth Method   {C_YELLOW}{s['ssh_auth']}{C_RESET} | Compression: {C_YELLOW}{s['ssh_compress']}{C_RESET}"
+        return f"SSH Auth Method   {C_YELLOW}{s['ssh_auth']}{C_RESET}"
+
+    def lab_ssh_comp():
+        v = status_snapshot(read_config())['ssh_compress']
+        label = "enabled" if str(v).lower() == 'y' else "disabled"
+        return f"SSH Compression   {C_YELLOW}{label} ({v}){C_RESET}"
 
     def lab_proxy():
         s = status_snapshot(read_config())
@@ -853,13 +858,14 @@ def menu_edit(mode):
     options = [
         ('1', lab_mode,       stay_after(functools.partial(menu_edit_connection_mode, mode))),
         ('2', lab_ssh_server, stay_after(functools.partial(menu_edit_ssh, mode))),
-        ('3', lab_ssh_auth,   stay_after(functools.partial(menu_edit_ssh, mode))),
-        ('4', lab_proxy,      stay_after(_edit_proxy_inline)),
-        ('5', lab_payload,    stay_after(_edit_payload_text)),
-        ('6', lab_sni,        stay_after(functools.partial(_edit_val, 'sni', 'server_name', 'SNI Host'))),
-        ('7', lab_engine,     stay_after(functools.partial(menu_edit_engine, mode))),
-        ('8', lab_log,        stay_after(functools.partial(_log_level_menu, mode))),
-        ('9', lab_open_raw,   stay_after(_open_active_config)),
+        ('3', lab_proxy,      stay_after(_edit_proxy_inline)),
+        ('4', lab_payload,    stay_after(_edit_payload_text)),
+        ('5', lab_sni,        stay_after(functools.partial(_edit_val, 'sni', 'server_name', 'SNI Host'))),
+        ('6', lab_ssh_auth,   stay_after(_edit_auth)),
+        ('7', lab_ssh_comp,   stay_after(_edit_compression)),
+        ('8', lab_engine,     stay_after(functools.partial(menu_edit_engine, mode))),
+        ('9', lab_log,        stay_after(functools.partial(_log_level_menu, mode))),
+        ('0', lab_open_raw,   stay_after(_open_active_config)),
         ('B', '← Back', STATUS_BREAK),
     ]
 
