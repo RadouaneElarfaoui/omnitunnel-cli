@@ -277,33 +277,59 @@ def _save_config():
     input("\nPress Enter to continue...")
 
 
-def _load_config(mode):
+def _open_saved_folder():
     ensure_saved_configs_dir()
-    files = sorted(os.listdir(SAVED_CONFIGS_DIR))
-    configs = [f for f in files if f.endswith(('.ot', '.json'))]
+    try:
+        subprocess.Popen(
+            ["xdg-open", SAVED_CONFIGS_DIR],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True
+        )
+    except FileNotFoundError:
+        print(f"\n{C_YELLOW}xdg-open not found — folder: {SAVED_CONFIGS_DIR}{C_RESET}")
+        input("\nPress Enter to continue...")
+    except Exception as e:
+        print(f"\n{C_RED}Failed to open folder: {e}{C_RESET}")
+        input("\nPress Enter to continue...")
+
+
+def _load_config(mode, silent=False):
+    ensure_saved_configs_dir()
+    configs = sorted([f for f in os.listdir(SAVED_CONFIGS_DIR) if f.endswith(('.ot', '.json'))]) if os.path.isdir(SAVED_CONFIGS_DIR) else []
     if not configs:
         print(f"\n{C_YELLOW}No saved configurations found.{C_RESET}")
         input("\nPress Enter to continue...")
         return
-    choice = pick_list("Saved Configuration Library", configs, mode=mode)
-    if choice is None:
+    open_label = "📂 Open Folder"
+    while True:
+        items = [open_label] + configs
+        choice = pick_list("Saved Configuration Library", items, mode=mode)
+        if choice is None:
+            return
+        if choice == open_label:
+            _open_saved_folder()
+            # loop back to list without leaving menu
+            continue
+        target_file = choice
+        src_path = os.path.join(SAVED_CONFIGS_DIR, target_file)
+        try:
+            if target_file.endswith('.json'):
+                _set_config('mode', 'connection_mode', 'v2ray')
+                _set_config('v2ray', 'v2ray_config', src_path)
+                _set_config('v2ray', 'active_remark', target_file[:-5])
+                if not silent:
+                    print(f"\n{C_GREEN}V2Ray/Xray Profile '{target_file[:-5]}' loaded as active!{C_RESET}")
+            elif target_file.endswith('.ot'):
+                config_dict, meta = import_profile_from_omni(src_path)
+                write_config(dict_to_configparser(config_dict))
+                if not silent:
+                    print(f"\n{C_GREEN}Profile '{meta['profile_name']}' (.ot) loaded successfully!{C_RESET}")
+        except Exception as e:
+            print(f"\n{C_RED}Error loading configuration: {e}{C_RESET}")
+            input("\nPress Enter to continue...")
+            return
+        if not silent:
+            input("\nPress Enter to continue...")
         return
-    target_file = choice
-    src_path = os.path.join(SAVED_CONFIGS_DIR, target_file)
-    try:
-        if target_file.endswith('.json'):
-            _set_config('mode', 'connection_mode', 'v2ray')
-            _set_config('v2ray', 'v2ray_config', src_path)
-            _set_config('v2ray', 'active_remark', target_file[:-5])
-            print(f"\n{C_GREEN}V2Ray/Xray Profile '{target_file[:-5]}' loaded as active!{C_RESET}")
-        elif target_file.endswith('.ot'):
-            config_dict, meta = import_profile_from_omni(src_path)
-            # unified: active is .ot JSON
-            write_config(dict_to_configparser(config_dict))
-            print(f"\n{C_GREEN}Profile '{meta['profile_name']}' (.ot) loaded successfully!{C_RESET}")
-    except Exception as e:
-        print(f"\n{C_RED}Error loading configuration: {e}{C_RESET}")
-    input("\nPress Enter to continue...")
 
 
 def _delete_config(mode):
@@ -763,9 +789,10 @@ def menu_main(mode):
         options = [
             ('1', 'Run VPN', stay_after(lambda: menu_start_vpn(mode))),
             ('2', 'Edit', stay_after(lambda: menu_edit(mode))),
-            ('3', 'Profiles', stay_after(lambda: menu_manage_configs(mode))),
-            ('4', 'Logs', stay_after(lambda: menu_view_logs(mode))),
-            ('5', 'Exit', _do_exit),
+            ('3', 'Load', stay_after(lambda: _load_config(mode, silent=True))),
+            ('4', 'Profiles', stay_after(lambda: menu_manage_configs(mode))),
+            ('5', 'Logs', stay_after(lambda: menu_view_logs(mode))),
+            ('6', 'Exit', _do_exit),
         ]
 
         def render():
