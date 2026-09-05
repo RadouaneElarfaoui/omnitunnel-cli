@@ -78,8 +78,10 @@ mode=$(python3 -c "import sys; sys.path.insert(0, '$PROJECT_DIR'); from src.menu
 killprocess() {
 echo -e "${RED}[+] KILLING PROCESS...."
 pkill -f "python3.*src/ssh.py" 2>/dev/null || true
-# only kill the tunnel's ssh clients (dynamic forward -CND 1080 / host1), never sshd/ssh-agent
+# kill ssh via injector (mode 1/2/3) and direct ssh (mode 0)
 pkill -f "ssh.*-CND 1080" 2>/dev/null || true
+pkill -f "sshpass.*ssh" 2>/dev/null || true
+# legacy pattern fallback
 pkill -f "sshpass.*host1" 2>/dev/null || true
 pkill redsocks 2>/dev/null || true
 pkill dns2socks 2>/dev/null || true
@@ -94,21 +96,23 @@ trap 'killprocess' EXIT
 
 function serverlistening() {
     localport="$1"
+    # Only start injector when needed (modes 1/2/3); v2ray and direct 0 skip
+    if [ "$mode" = "v2ray" ] || [ "$mode" = "0" ]; then
+        return 0
+    fi
     python3 "$PROJECT_DIR/main.py" $localport &
     echo ""
 }
 function connect() {
         localport="$1"
-
-	if [ "$mode" = "0" ]
+        # re-read mode per iteration in case config changed (or active.ot swapped)
+        cur_mode=$(python3 -c "import sys; sys.path.insert(0, '$PROJECT_DIR'); from src.menu_common import read_config, status_snapshot; print(status_snapshot(read_config())['mode'])" 2>/dev/null || echo "$mode")
+	if [ "$cur_mode" = "0" ]
         then
            python3 "$PROJECT_DIR/src/ssh.py" 0
     else
-
-			python3 "$PROJECT_DIR/src/ssh.py" $localport
-
+           python3 "$PROJECT_DIR/src/ssh.py" $localport
 	fi
-
 }
 
 if [ "$mode" = "v2ray" ]; then
@@ -123,7 +127,6 @@ sleep 1
 
 for i in {9008..9999}
 do
-
     echo -e "$GREEN ++++ LOGS ++++$SCOLOR"
 	rm -f "$PROJECT_DIR/logs.txt" 2>/dev/null || true
 	serverlistening $i
@@ -132,5 +135,4 @@ do
     killprocess
     sleep 1
 done
-
 

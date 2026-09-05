@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.4
+
+* **Peak — connection workflow hardened**: `src/ssh.py` fixes malformed `publickey` `ssh -i` (was `ssh -i {password} publickey.pem useless@host`), now resolves key via `password` path → `cfgs/privatekey.pem` → `~/.ssh/id_*` with `IdentitiesOnly`, correct `user@host`, mode-aware `Direct SSH`/`TLS/SNI` banner, placeholder validation (abort on `your_username`/`vps.example.com` before `ssh -v`), `DNS: host→ip` log without replacing hostname, `load_hostkeys` flood suppressed, single-shot `singbox` engine (`_engine_launched` guard — was 6× `Launching singbox` per `Entering interactive session`), `sudo` once; `src/tunnel.py` fixes `CONNECT` parse (`regex` + `ssh_port` fallback), `v2ray` guard, `127.0.0.1:128` bind, **TLS insecure** `CERT_NONE`/`check_hostname=False` for SNI fronting (`example.com`→`178.170.25.195:8446` no longer `CERTIFICATE_VERIFY_FAILED`); `vpn/singbox_proxification` now reads unified `cfgs/saved/active.ot` via `read_config`/`status_snapshot` (was `cfgs/settings.ini`); `runvpn.sh` injector only for `1/2/3`, per-iteration mode re-read, `pkill sshpass.*ssh` fix; brand `omnitunnel-cli.svg` Kerr peak refresh.
+
 ## v1.3
 
 * **Portal Import + mode-aware overview + alignment**: main menu now `1 Run / 2 Edit / 3 Load (silent+📂) / 4 Import (.ot portal → library same name → Load + Xray share link) / 5 Profiles (Save/Delete only) / 6 Logs / 7 Exit`; `Edit` adds `0 Open Raw Config` (`xdg-open active.ot`) and splits `SSH Auth Method`/`SSH Compression` into separate rows (`6 Auth` toggle, `7 Compression` toggle) moved before `VPN Engine`; `Current Configuration` aligned to `W=18` so all values start same column and is now mode-aware (`0` hides `Proxy/Payload/SNI`, `1` hides `SNI`, `2` hides `Proxy/Payload`, `3` shows all, `v2ray` shows `V2Ray Profile/Config`); `Sing-Box Log Level` → `Sing-Box Log` and ` — ● marks active` removed from titles (`Select Connection Mode`, `Sing-Box Log`).

@@ -13,23 +13,39 @@ fi
 
 CONFIG_FILE="$PROJECT_DIR/cfgs/singbox_config.json"
 
-# Generate fresh sing-box JSON configuration
+# Generate fresh sing-box JSON configuration from unified active.ot
 python3 -c "
 import sys, os
 sys.path.insert(0, '$PROJECT_DIR')
-import configparser
+from src.menu_common import read_config, status_snapshot
 from src.singbox_adapter import generate_singbox_config, save_singbox_config
 
-config = configparser.ConfigParser()
-config.read('$PROJECT_DIR/cfgs/settings.ini')
-mode = config.get('mode', 'connection_mode', fallback='0')
+config = read_config()
+s = status_snapshot(config)
+mode = s['mode']
 
-if mode == 'v2ray' and config.has_option('v2ray', 'v2ray_config'):
-    v2ray_cfg_path = config.get('v2ray', 'v2ray_config')
-    if os.path.exists(v2ray_cfg_path):
-        import shutil
-        shutil.copyfile(v2ray_cfg_path, '$CONFIG_FILE')
+# v2ray mode: if json profile exists, copy it directly; else generate from config
+if mode == 'v2ray':
+    v2ray_cfg_path = s.get('v2ray_config')
+    # also try configparser fallback
+    try:
+        v2ray_cfg_path = config.get('v2ray', 'v2ray_config', fallback=v2ray_cfg_path)
+    except:
+        pass
+    if v2ray_cfg_path and os.path.exists(v2ray_cfg_path):
+        import shutil, json
+        # validate it is a valid sing-box config before copying
+        try:
+            with open(v2ray_cfg_path, 'r', encoding='utf-8') as f:
+                json.load(f)
+            shutil.copyfile(v2ray_cfg_path, '$CONFIG_FILE')
+        except Exception as e:
+            print(f'Warning: v2ray config invalid ({e}) — generating default', flush=True)
+            sb_cfg = generate_singbox_config(config, socks_port=1080)
+            save_singbox_config(sb_cfg, '$CONFIG_FILE')
     else:
+        if v2ray_cfg_path:
+            print(f'Warning: v2ray config not found at {v2ray_cfg_path} — generating default SOCKS config', flush=True)
         sb_cfg = generate_singbox_config(config, socks_port=1080)
         save_singbox_config(sb_cfg, '$CONFIG_FILE')
 else:

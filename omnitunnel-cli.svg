@@ -1,24 +1,70 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
   <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#1a73e8"/>
-      <stop offset="100%" style="stop-color:#0d47a1"/>
+    <!-- Dégradé du fond Dark Void -->
+    <radialGradient id="bgKerr" cx="50%" cy="50%" r="70%">
+      <stop offset="0%" stop-color="#140624" />
+      <stop offset="55%" stop-color="#080210" />
+      <stop offset="100%" stop-color="#020005" />
+    </radialGradient>
+
+    <!-- Anneau Orbital Alpha (Violet Astral / Pulsar) -->
+    <linearGradient id="kerrGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E879F9" />
+      <stop offset="50%" stop-color="#C084FC" />
+      <stop offset="100%" stop-color="#6D28D9" />
     </linearGradient>
-    <linearGradient id="shield" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#ffffff"/>
-      <stop offset="100%" style="stop-color:#e0e0e0"/>
+
+    <!-- Anneau Orbital Beta (Omni-Cyan / BBR Green) -->
+    <linearGradient id="kerrGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00FF87" />
+      <stop offset="50%" stop-color="#00F2FE" />
+      <stop offset="100%" stop-color="#2563EB" />
     </linearGradient>
+
+    <!-- Lueur Néon Stellaire (Glow Filter) -->
+    <!-- CORRIGÉ : Extension de la bounding box du filtre pour éviter le rognage des halos -->
+    <filter id="kerrGlow" x="-200%" y="-200%" width="500%" height="500%">
+      <feGaussianBlur stdDeviation="9" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
   </defs>
-  <rect width="128" height="128" rx="24" fill="url(#bg)"/>
-  <path d="M64 18 L98 34 L98 62 C98 86 82 104 64 112 C46 104 30 86 30 62 L30 34 Z"
-        fill="url(#shield)" opacity="0.95"/>
-  <path d="M64 26 L90 38 L90 62 C90 82 78 98 64 104 C50 98 38 82 38 62 L38 38 Z"
-        fill="none" stroke="#1a73e8" stroke-width="2.5"/>
-  <g transform="translate(64,62)">
-    <circle cx="0" cy="-10" r="4" fill="#1a73e8"/>
-    <line x1="0" y1="-6" x2="0" y2="14" stroke="#1a73e8" stroke-width="3.5" stroke-linecap="round"/>
-    <path d="M-12 4 L-12 -2 Q-12 -14 0 -14 Q12 -14 12 -2 L12 4"
-          fill="none" stroke="#1a73e8" stroke-width="3.5" stroke-linecap="round"/>
+
+  <!-- Fond arrondi squircle -->
+  <!-- CORRIGÉ : Ajustement de la taille et marges pour ne pas couper le stroke externe -->
+  <rect x="2" y="2" width="508" height="508" rx="120" fill="url(#bgKerr)" stroke="#3B0764" stroke-width="4"/>
+
+  <!-- Anneau externe d'ondes gravitationnelles diffuses -->
+  <circle cx="256" cy="256" r="190" stroke="#7C3AED" stroke-opacity="0.25" stroke-width="2.5" stroke-dasharray="14 10"/>
+  <circle cx="256" cy="256" r="145" stroke="#00F2FE" stroke-opacity="0.2" stroke-width="2" stroke-dasharray="10 8"/>
+
+  <!-- Anneau Orbital 1 (Axe Alpha -35°) -->
+  <g transform="rotate(-35 256 256)">
+    <ellipse cx="256" cy="256" rx="195" ry="64" stroke="url(#kerrGrad1)" stroke-width="12" fill="none" filter="url(#kerrGlow)"/>
+    <ellipse cx="256" cy="256" rx="195" ry="64" stroke="#FFFFFF" stroke-width="2" stroke-dasharray="18 14" opacity="0.65"/>
+    <!-- CORRIGÉ : Nœud Alpha intégré au groupe. Positionnement exact à l'apex droit (Centre 256 + Rayon X 195 = 451) -->
+    <circle cx="451" cy="256" r="11" fill="#E879F9" filter="url(#kerrGlow)"/>
   </g>
+
+  <!-- Anneau Orbital 2 (Axe Beta +35° - Orthogonal) -->
+  <g transform="rotate(35 256 256)">
+    <ellipse cx="256" cy="256" rx="195" ry="64" stroke="url(#kerrGrad2)" stroke-width="12" fill="none" filter="url(#kerrGlow)"/>
+    <ellipse cx="256" cy="256" rx="195" ry="64" stroke="#FFFFFF" stroke-width="2" stroke-dasharray="18 14" opacity="0.65"/>
+    <!-- CORRIGÉ : Nœud Beta intégré au groupe. Positionnement exact à l'apex gauche (Centre 256 - Rayon X 195 = 61) -->
+    <circle cx="61" cy="256" r="11" fill="#00FF87" filter="url(#kerrGlow)"/>
+  </g>
+
+  <!-- Sphère centrale du Trou Noir de Kerr (Singularité rotative) -->
+  <circle cx="256" cy="256" r="82" fill="#000000" stroke="#A855F7" stroke-width="7" filter="url(#kerrGlow)"/>
+
+  <!-- Ergosphère interne (Horizon des photons ultra-rapide) -->
+  <circle cx="256" cy="256" r="42" fill="#0A0214" stroke="#00FF87" stroke-width="4.5" stroke-dasharray="8 6" filter="url(#kerrGlow)"/>
+
+  <!-- CORRIGÉ : Nœud inférieur aligné mathématiquement sur le tracé de l'onde externe (256 + 190 = 446) -->
+  <circle cx="256" cy="446" r="8" fill="#00F2FE" filter="url(#kerrGlow)"/>
+
+  <!-- Singularité quantique centrale -->
+  <circle cx="256" cy="256" r="10" fill="#FFFFFF" filter="url(#kerrGlow)"/>
 </svg>
