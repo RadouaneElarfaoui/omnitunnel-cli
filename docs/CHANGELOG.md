@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.3
+
+* **Portal Import + mode-aware overview + alignment**: main menu now `1 Run / 2 Edit / 3 Load (silent+📂) / 4 Import (.ot portal → library same name → Load + Xray share link) / 5 Profiles (Save/Delete only) / 6 Logs / 7 Exit`; `Edit` adds `0 Open Raw Config` (`xdg-open active.ot`) and splits `SSH Auth Method`/`SSH Compression` into separate rows (`6 Auth` toggle, `7 Compression` toggle) moved before `VPN Engine`; `Current Configuration` aligned to `W=18` so all values start same column and is now mode-aware (`0` hides `Proxy/Payload/SNI`, `1` hides `SNI`, `2` hides `Proxy/Payload`, `3` shows all, `v2ray` shows `V2Ray Profile/Config`); `Sing-Box Log Level` → `Sing-Box Log` and ` — ● marks active` removed from titles (`Select Connection Mode`, `Sing-Box Log`).
+
 ## v1.2
 
 * **Unified config + main-menu Load**: single active store `cfgs/saved/active.ot` (JSON `.ot` via `import_profile_from_omni`/`export_profile_to_omni` + `status_snapshot`/`read_config`/`write_config`); single `.ot` library (`.ini` dropped); `src/ssh.py` builds `ssh` cmd directly (drop `ConfMake`/`cfgs/configFile` shim + `auth_methode` fallback); `runvpn.sh`/`install.sh`/`uninstall.sh`/`v2ray_parser` read via `status_snapshot`; `SAVED_CONFIGS_DIR` is the only `777` dir (remove `cfgs` 777 fork) in `ensure_saved_configs_dir`/`install.sh`/`build-deb.sh` (`build-deb.sh` postinst + payload fixed); `cfgs/settings.ot.example` is the only fallback renderer; `build-deb.sh` still slim. **Menu**: main menu now `1 Run / 2 Edit / 3 Load (silent)` — `Load` is the same library picker as `Profiles → Load` but silent (no `loaded successfully`/`Press Enter`) and starts with `📂 Open Folder` (`xdg-open cfgs/saved`, loops back); both pickers now share the open-folder header (`xdg-open` via `Popen` `start_new_session`).
