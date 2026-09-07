@@ -21,10 +21,10 @@
 
 ```bash
 # 1. Sing-Box engine (if not installed)
-curl -fL -o /tmp/sing-box_1.14.0_linux_amd64.deb https://github.com/SagerNet/sing-box/releases/download/v1.14.0/sing-box_1.14.0_linux_amd64.deb && sudo apt install -y /tmp/sing-box_1.14.0_linux_amd64.deb
+cd /tmp && wget https://github.com/SagerNet/sing-box/releases/download/v1.14.0/sing-box_1.14.0_linux_amd64.deb && sudo apt install -y ./sing-box_1.14.0_linux_amd64.deb
 
 # 2. OmniTunnel CLI
-curl -fL -o /tmp/omnitunnel-cli_2.0.deb https://github.com/RadouaneElarfaoui/omnitunnel-cli/releases/download/v2.0/omnitunnel-cli_2.0.deb && sudo apt install -y /tmp/omnitunnel-cli_2.0.deb
+cd /tmp && wget https://github.com/RadouaneElarfaoui/omnitunnel-cli/releases/download/v2.0/omnitunnel-cli_2.0.deb && sudo apt install -y ./omnitunnel-cli_2.0.deb
 ```
 ### Manual installation
 
