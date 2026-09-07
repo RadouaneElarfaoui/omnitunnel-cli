@@ -1,6 +1,6 @@
 [English](README.md) | [Français](README.fr.md) | [Español](README.es.md) | [العربية](README.ar.md) | [Português](README.pt.md) | [中文](README.zh.md)
 
-# OmniTunnel CLI (v2.0)
+# OmniTunnel CLI (v2.1)
 
 [![GitHub license](https://img.shields.io/github/license/RadouaneElarfaoui/omnitunnel-cli?style=flat-square)](LICENSE)
 [![Platform Compatibility](https://img.shields.io/badge/platform-Ubuntu%20%7C%20Debian%20%7C%20Termux-blue?style=flat-square)](#installation)
@@ -9,7 +9,7 @@
 
 - **V2Ray / Xray / Sing-Box**: import share links (`vless://`, `vmess://`, `trojan://`, `ss://`, `hy2://`).
 - **Sing-Box TUN Engine**: `tun0` with DoH caching.
-- **Proxy Mode**: expose SOCKS5 (`1081`) + HTTP (`8080`) ports instead of TUN — `otunnel` → `Run Proxy` or `runvpn.sh --proxy`.
+- **Proxy Mode**: expose SOCKS5 (`1081`) + HTTP (`8080`) ports instead of TUN — `otunnel run --proxy`.
 - **Encrypted `.ot` profiles**: export/import with PBKDF2 password protection.
 - **Kernel TCP BBR** optimization.
 
@@ -24,7 +24,7 @@
 wget -O /tmp/sing-box_1.14.0_linux_amd64.deb https://github.com/SagerNet/sing-box/releases/download/v1.14.0/sing-box_1.14.0_linux_amd64.deb && sudo apt install -y /tmp/sing-box_1.14.0_linux_amd64.deb
 
 # 2. OmniTunnel CLI
-wget -O /tmp/omnitunnel-cli_2.0.deb https://github.com/RadouaneElarfaoui/omnitunnel-cli/releases/download/v2.0/omnitunnel-cli_2.0.deb && sudo apt install -y /tmp/omnitunnel-cli_2.0.deb
+wget -O /tmp/omnitunnel-cli_2.1.deb https://github.com/RadouaneElarfaoui/omnitunnel-cli/releases/download/v2.1/omnitunnel-cli_2.1.deb && sudo apt install -y /tmp/omnitunnel-cli_2.1.deb
 ```
 ### Manual installation
 
@@ -47,6 +47,13 @@ otunnel
 ```
 
 *(or `sudo otunnel`)*
+
+Launch directly without the menu:
+
+```bash
+otunnel run           # start VPN (TUN engine)
+otunnel run --proxy   # start proxy (SOCKS5 1081 + HTTP 8080)
+```
 
 Or from within the cloned repository folder:
 
