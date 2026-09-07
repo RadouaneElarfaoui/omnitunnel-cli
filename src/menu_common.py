@@ -181,6 +181,49 @@ def write_config(config):
     export_profile_to_omni(config, profile_name="active", output_path=CONFIG_PATH)
 
 
+def find_profile(name):
+    """Find a saved profile by name (exact or prefix match). Returns full path or None."""
+    ensure_saved_configs_dir()
+    if not os.path.isdir(SAVED_CONFIGS_DIR):
+        return None
+    # Exact match first
+    for ext in ('.ot', '.json'):
+        path = os.path.join(SAVED_CONFIGS_DIR, f"{name}{ext}")
+        if os.path.exists(path):
+            return path
+    # Prefix match
+    for f in os.listdir(SAVED_CONFIGS_DIR):
+        base = f.rsplit('.', 1)[0]
+        if base.startswith(name):
+            return os.path.join(SAVED_CONFIGS_DIR, f)
+    return None
+
+
+def load_profile(name):
+    """Load a saved profile by name and set as active. Returns True on success."""
+    path = find_profile(name)
+    if not path:
+        print(f"Profile '{name}' not found in {SAVED_CONFIGS_DIR}")
+        return False
+    base = os.path.splitext(os.path.basename(path))[0]
+    if path.endswith('.json'):
+        # v2ray profile — set via configparser directly (avoid circular import)
+        config = read_config()
+        if not config.has_section('mode'):
+            config.add_section('mode')
+        if not config.has_section('v2ray'):
+            config.add_section('v2ray')
+        config.set('mode', 'connection_mode', 'v2ray')
+        config.set('v2ray', 'v2ray_config', path)
+        config.set('v2ray', 'active_remark', base)
+        write_config(config)
+    else:
+        config_dict, _ = import_profile_from_omni(path)
+        write_config(dict_to_configparser(config_dict))
+    print(f"Profile '{base}' loaded.")
+    return True
+
+
 def get_mode_name(mode):
     return MODE_NAMES.get(mode, f"Unknown ({mode})")
 

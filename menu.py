@@ -10,7 +10,18 @@ def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
 
     if argv and argv[0] == 'run':
-        proxy_flag = '--proxy' in argv
+        sys.path.insert(0, BASE_DIR)
+        from src.menu_common import load_profile
+
+        args = argv[1:]
+        proxy_flag = '--proxy' in args
+        if proxy_flag:
+            args.remove('--proxy')
+
+        if args:
+            if not load_profile(args[0]):
+                sys.exit(1)
+
         script = os.path.join(BASE_DIR, 'runvpn.sh')
         cmd = ['bash', script]
         if proxy_flag:

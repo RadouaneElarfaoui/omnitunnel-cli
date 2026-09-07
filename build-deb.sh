@@ -3,7 +3,7 @@ set -euo pipefail
 
 IMAGE="omnitunnel-deb-build"
 CONTAINER="omnitunnel-build-container"
-VERSION="2.0"
+VERSION="2.2"
 ARCH="amd64"
 PKG_NAME="omnitunnel-cli"
 

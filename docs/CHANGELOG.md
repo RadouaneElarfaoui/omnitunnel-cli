@@ -1,5 +1,9 @@
 # Changelog
 
+## v2.2
+
+* **CLI run commands**: `otunnel run [profile]` and `otunnel run --proxy [profile]` launch VPN/proxy directly from terminal without opening the menu; profile name is optional (partial match supported); shared `load_profile(name)` / `find_profile(name)` in `src/menu_common.py` eliminates duplication between CLI and menu load paths.
+
 ## v2.0
 
 * **Proxy Mode — SOCKS + HTTP instead of TUN**: new `2 Run Proxy` in the main menu (`1 Run / 2 Run Proxy / 3 Edit / 4 Load / 5 Import / 6 Profiles / 7 Logs / 8 Exit`) launches `runvpn.sh --proxy` and exposes **SOCKS5 on `0.0.0.0:1081`** + **HTTP on `0.0.0.0:8080`** for apps that only proxy (browsers, curl, Telegram), leaving the host network fully untouched — no TUN, no root-route changes, no interference with the SSH tunnel lifecycle; `src/singbox_adapter.py` `generate_singbox_config()` gains an `output_mode` param (`tun` default, `socks` → socks/http inbounds with the mixed stack dropped), `vpn/singbox_proxification` honors `OUTPUT_MODE` and prints the endpoint banner (`SOCKS5 → 0.0.0.0:1081` / `HTTP → 0.0.0.0:8080`), `runvpn.sh` parses `--proxy` (also `OUTPUT_MODE` env override) before engine resolution; `build-deb.sh` bump `1.4` → `2.0`.
