@@ -1,11 +1,28 @@
 #!/usr/bin/env python3
 import sys
-from src.menu_common import C_RED, C_RESET
-from src.menu_options import menu_main
+import subprocess
+import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
+
+    if argv and argv[0] == 'run':
+        proxy_flag = '--proxy' in argv
+        script = os.path.join(BASE_DIR, 'runvpn.sh')
+        cmd = ['bash', script]
+        if proxy_flag:
+            cmd.append('--proxy')
+        try:
+            subprocess.run(cmd)
+        except KeyboardInterrupt:
+            pass
+        return
+
+    from src.menu_common import C_RED, C_RESET
+    from src.menu_options import menu_main
     mode = 'number' if '--number' in argv else 'arrows'
     try:
         menu_main(mode=mode)
