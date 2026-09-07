@@ -15,6 +15,14 @@ mkdir -p "$PROJECT_DIR/bin"
 export PATH="$PROJECT_DIR/bin:$PATH"
 export PYTHONPATH="$PROJECT_DIR:${PYTHONPATH:-}"
 
+# Output mode: --proxy exposes SOCKS+HTTP ports instead of TUN
+export OUTPUT_MODE="${OUTPUT_MODE:-tun}"
+for arg in "$@"; do
+    if [ "$arg" = "--proxy" ]; then
+        export OUTPUT_MODE=socks
+    fi
+done
+
 # Engine mode (singbox = default, no compile needed) — unified active.ot
 engine=$(python3 -c "import sys; sys.path.insert(0, '$PROJECT_DIR'); from src.menu_common import read_config, status_snapshot; print(status_snapshot(read_config())['engine_mode'])" 2>/dev/null || echo singbox)
 

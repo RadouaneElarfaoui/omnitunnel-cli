@@ -14,6 +14,7 @@ fi
 CONFIG_FILE="$PROJECT_DIR/cfgs/singbox_config.json"
 
 # Generate fresh sing-box JSON configuration from unified active.ot
+OUTPUT_MODE="${OUTPUT_MODE:-tun}"
 python3 -c "
 import sys, os
 sys.path.insert(0, '$PROJECT_DIR')
@@ -23,6 +24,7 @@ from src.singbox_adapter import generate_singbox_config, save_singbox_config
 config = read_config()
 s = status_snapshot(config)
 mode = s['mode']
+output_mode = '$OUTPUT_MODE'
 
 # v2ray mode: if json profile exists, copy it directly; else generate from config
 if mode == 'v2ray':
@@ -41,19 +43,25 @@ if mode == 'v2ray':
             shutil.copyfile(v2ray_cfg_path, '$CONFIG_FILE')
         except Exception as e:
             print(f'Warning: v2ray config invalid ({e}) — generating default', flush=True)
-            sb_cfg = generate_singbox_config(config, socks_port=1080)
+            sb_cfg = generate_singbox_config(config, socks_port=1080, output_mode=output_mode)
             save_singbox_config(sb_cfg, '$CONFIG_FILE')
     else:
         if v2ray_cfg_path:
             print(f'Warning: v2ray config not found at {v2ray_cfg_path} — generating default SOCKS config', flush=True)
-        sb_cfg = generate_singbox_config(config, socks_port=1080)
+        sb_cfg = generate_singbox_config(config, socks_port=1080, output_mode=output_mode)
         save_singbox_config(sb_cfg, '$CONFIG_FILE')
 else:
-    sb_cfg = generate_singbox_config(config, socks_port=1080)
+    sb_cfg = generate_singbox_config(config, socks_port=1080, output_mode=output_mode)
     save_singbox_config(sb_cfg, '$CONFIG_FILE')
 "
 
-echo "✔ Starting sing-box High-Performance TUN Engine..."
+if [ "$OUTPUT_MODE" = "socks" ]; then
+    echo "✔ Starting sing-box Proxy Engine..."
+    echo "  SOCKS5 → 0.0.0.0:1081"
+    echo "  HTTP   → 0.0.0.0:8080"
+else
+    echo "✔ Starting sing-box High-Performance TUN Engine..."
+fi
 exec "$SINGBOX_BIN" run -c "$CONFIG_FILE" 2>&1 | python3 -c "
 import sys
 sys.path.insert(0, '$PROJECT_DIR')

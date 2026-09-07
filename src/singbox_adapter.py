@@ -23,7 +23,7 @@ def find_singbox_binary():
             return path
     return None
 
-def generate_singbox_config(config_input, socks_port=1080, tun_interface="tun0") -> dict:
+def generate_singbox_config(config_input, socks_port=1080, tun_interface="tun0", output_mode="tun") -> dict:
     """
     Generate sing-box 1.12+ compatible JSON configuration dictionary using DoH (DNS-over-HTTPS).
     DoH runs over TCP/HTTPS, ensuring 100% compatibility with OpenSSH SOCKS5 proxies.
@@ -48,6 +48,35 @@ def generate_singbox_config(config_input, socks_port=1080, tun_interface="tun0")
         candidate = str(config_dict["engine"]["singbox_log_level"]).strip().lower()
         if candidate in ("info", "debug", "warn", "error"):
             log_level = candidate
+
+    # Inbounds depend on output mode
+    if output_mode == "socks":
+        inbounds = [
+            {
+                "type": "socks",
+                "tag": "socks-in",
+                "listen": "0.0.0.0",
+                "listen_port": 1081
+            },
+            {
+                "type": "http",
+                "tag": "http-in",
+                "listen": "0.0.0.0",
+                "listen_port": 8080
+            }
+        ]
+    else:
+        inbounds = [
+            {
+                "type": "tun",
+                "tag": "tun-in",
+                "interface_name": tun_interface,
+                "address": ["172.19.0.1/30"],
+                "auto_route": True,
+                "strict_route": True,
+                "stack": "mixed"
+            }
+        ]
 
     singbox_config = {
         "log": {
@@ -74,17 +103,7 @@ def generate_singbox_config(config_input, socks_port=1080, tun_interface="tun0")
                 }
             ]
         },
-        "inbounds": [
-            {
-                "type": "tun",
-                "tag": "tun-in",
-                "interface_name": tun_interface,
-                "address": ["172.19.0.1/30"],
-                "auto_route": True,
-                "strict_route": True,
-                "stack": "mixed"
-            }
-        ],
+        "inbounds": inbounds,
         "outbounds": [
             {
                 "type": "socks",

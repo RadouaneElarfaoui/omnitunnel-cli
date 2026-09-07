@@ -802,6 +802,16 @@ def menu_start_vpn(mode):
     input("\nPress Enter to return to menu...")
 
 
+def menu_start_proxy(mode):
+    _frame()
+    print(f"{C_GREEN}Starting Proxy (SOCKS:1081 + HTTP:8080)... (Press Ctrl+C to stop){C_RESET}\n")
+    try:
+        subprocess.run(["bash", os.path.join(BASE_DIR, "runvpn.sh"), "--proxy"])
+    except KeyboardInterrupt:
+        print(f"\n{C_RED}Proxy process terminated by user.{C_RESET}")
+    input("\nPress Enter to return to menu...")
+
+
 def menu_edit(mode):
     """Same layout as main menu's Current Configuration, but selectable.
 
@@ -924,12 +934,13 @@ def menu_main(mode):
     while True:
         options = [
             ('1', 'Run VPN', stay_after(lambda: menu_start_vpn(mode))),
-            ('2', 'Edit', stay_after(lambda: menu_edit(mode))),
-            ('3', 'Load', stay_after(lambda: _load_config(mode, silent=True))),
-            ('4', 'Import', stay_after(lambda: menu_import_main(mode))),
-            ('5', 'Profiles', stay_after(lambda: menu_manage_configs(mode))),
-            ('6', 'Logs', stay_after(lambda: menu_view_logs(mode))),
-            ('7', 'Exit', _do_exit),
+            ('2', 'Run Proxy', stay_after(lambda: menu_start_proxy(mode))),
+            ('3', 'Edit', stay_after(lambda: menu_edit(mode))),
+            ('4', 'Load', stay_after(lambda: _load_config(mode, silent=True))),
+            ('5', 'Import', stay_after(lambda: menu_import_main(mode))),
+            ('6', 'Profiles', stay_after(lambda: menu_manage_configs(mode))),
+            ('7', 'Logs', stay_after(lambda: menu_view_logs(mode))),
+            ('8', 'Exit', _do_exit),
         ]
 
         def render():
