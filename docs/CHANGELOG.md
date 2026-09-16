@@ -4,6 +4,7 @@
 
 * **Launcher bakes outbound server IPs at startup**: `vpn/singbox_proxification` resolves every domain `server` across outbounds via system DNS and writes the IP into the runtime config (`Resolved host -> ip` in logs) — the tunnel never resolves its own endpoint through itself, so the DoH-detour deadlock (`lookup ...: context deadline exceeded`) is gone for every protocol (vless/vmess/trojan/ss/hy2), both engines, TUN and proxy alike; TLS SNI / WS Host headers still carry the hostname so the handshake is unchanged, `socks-out`/`direct`/DoH untouched, unresolvable hosts left as-is with a warning, re-resolved on every (re)connect; audited all five v2ray parsers plus SSH modes and validated the full pipeline (import → socks rewrite → bake) against real `sing-box check`. The interim `local-dns`/`domain_resolver` workarounds are reverted (superseded, plus 1.14 rejects the route-field shape).
 * **Trojan parser parity**: `allowInsecure`/`insecure` → `tls.insecure` and `alpn` (with the ws `h2`-strip) via the shared `_parse_insecure`/`_parse_alpn` helpers; `install-singbox-lx.sh` now exits when any `sing-box-lx` is already present; `build-deb.sh` bump `2.4` → `2.5`.
+* **Mode-aware Edit menu**: `menu_edit` builds its rows from the active mode — `v2ray` shows Connection Mode, V2Ray Profile (remark + file, switches via the existing loader), Re-import Link, VPN Engine, Sing-Box Log, Open Raw Config, and hides the six SSH-only rows (server/auth/compression/proxy/payload/SNI); SSH modes unchanged.
 
 ## v2.4
 
