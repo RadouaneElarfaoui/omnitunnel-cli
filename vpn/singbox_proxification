@@ -3,9 +3,19 @@
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export PATH="$PROJECT_DIR/bin:$PATH"
 
-SINGBOX_BIN="$(python3 -c 'import sys; sys.path.insert(0, "'"$PROJECT_DIR"'"); from src.singbox_adapter import find_singbox_binary; print(find_singbox_binary() or "")')"
+# Engine resolution: OMNI_ENGINE env (set by ssh.py) wins, otherwise the
+# engine_mode stored in the active profile. Values: singbox | singbox-lx.
+ENGINE_BIN="$(OMNI_ENGINE="${OMNI_ENGINE:-}" python3 -c 'import sys, os; sys.path.insert(0, "'"$PROJECT_DIR"'"); from src.menu_common import read_config, status_snapshot; from src.singbox_adapter import find_engine_binary; engine = os.environ.get("OMNI_ENGINE") or status_snapshot(read_config())["engine_mode"]; print(engine + "|" + (find_engine_binary(engine) or ""))')"
+ENGINE="${ENGINE_BIN%%|*}"
+SINGBOX_BIN="${ENGINE_BIN#*|}"
 
 if [ -z "$SINGBOX_BIN" ]; then
+    if [ "$ENGINE" = "singbox-lx" ]; then
+        echo "✕ sing-box-lx engine selected but binary not found — install it with:"
+        echo "  curl -fsSL https://raw.githubusercontent.com/RadouaneElarfaoui/omnitunnel-cli/main/install-singbox-lx.sh | sudo bash"
+        echo "  Not falling back: this profile needs the XHTTP transport."
+        exit 1
+    fi
     echo "✕ Warning: sing-box binary not found. Falling back to legacy redsocks."
     exec bash "$PROJECT_DIR/vpn/proxification"
     exit 1
@@ -88,13 +98,24 @@ else:
     save_singbox_config(sb_cfg, config_file)
 "
 
+# Fail closed with a clear message when a profile needs XHTTP but the
+# stock engine is selected (stock sing-box would die on unknown transport).
+if [ "$ENGINE" != "singbox-lx" ]; then
+    if python3 -c "import json, sys; cfg = json.load(open('$CONFIG_FILE')); sys.exit(0 if any(((o.get('transport') or {}).get('type') == 'xhttp') for o in cfg.get('outbounds', [])) else 1)"; then
+        echo "✕ This profile uses the XHTTP transport — switch engine to sing-box-lx"
+        echo "  (menu: Edit → Engine) or install it with:"
+        echo "  curl -fsSL https://raw.githubusercontent.com/RadouaneElarfaoui/omnitunnel-cli/main/install-singbox-lx.sh | sudo bash"
+        exit 1
+    fi
+fi
+
 if [ "$OUTPUT_MODE" = "socks" ]; then
-    echo "✔ Starting sing-box Proxy Engine..."
+    echo "✔ Starting $ENGINE Proxy Engine..."
     echo "  SOCKS5 → 0.0.0.0:$OMNI_SOCKS_IN_PORT (upstream 127.0.0.1:$OMNI_SSH_SOCKS_PORT)"
     echo "  HTTP   → 0.0.0.0:$OMNI_HTTP_IN_PORT"
     echo "  config → $CONFIG_FILE"
 else
-    echo "✔ Starting sing-box High-Performance TUN Engine..."
+    echo "✔ Starting $ENGINE High-Performance TUN Engine..."
 fi
 exec "$SINGBOX_BIN" run -c "$CONFIG_FILE" 2>&1 | python3 -c "
 import sys

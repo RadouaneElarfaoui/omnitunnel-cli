@@ -77,6 +77,9 @@ def parse_vless(uri: str) -> tuple:
                 "short_id": sid
             }
         outbound["tls"] = tls_config
+        alpn = params.get("alpn", [""])[0]
+        if alpn:
+            outbound["tls"]["alpn"] = [a.strip() for a in alpn.split(",") if a.strip()]
 
     # Transport Configuration
     if transport_type == "ws":
@@ -95,6 +98,18 @@ def parse_vless(uri: str) -> tuple:
         outbound["transport"] = {
             "type": "http",
             "path": urllib.parse.unquote(path)
+        }
+    elif transport_type == "xhttp":
+        # XHTTP transport: only spoken by the sing-box-lx engine fork.
+        # Flat schema per Leadaxe/sing-box-lx (NOT nested like ws/grpc).
+        xhost = params.get("host", [host])[0]
+        xpath = params.get("path", ["/"])[0]
+        xmode = params.get("mode", ["auto"])[0]
+        outbound["transport"] = {
+            "type": "xhttp",
+            "host": xhost,
+            "path": urllib.parse.unquote(xpath),
+            "mode": xmode,
         }
 
     return outbound, remark

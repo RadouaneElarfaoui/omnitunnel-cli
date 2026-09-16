@@ -299,7 +299,7 @@ class sshRunn:
 
     def _launch_engine(self):
         engine = getattr(self, 'engine_mode', 'singbox')
-        if engine == 'singbox':
+        if engine in ('singbox', 'singbox-lx'):
             script = os.path.join(PROJECT_DIR, "vpn/singbox_proxification")
             logger = log_singbox
         else:
@@ -309,6 +309,7 @@ class sshRunn:
         # Propagate per-instance ports so sing-box socks-out matches this ssh -D.
         # sudo -E preserves these for the launcher script.
         env = os.environ.copy()
+        env["OMNI_ENGINE"] = engine
         env["OMNI_SSH_SOCKS_PORT"] = str(self.socks5_port)
         for key, default in (("OMNI_SOCKS_IN_PORT", str(DEFAULT_SOCKS_IN_PORT)),
                              ("OMNI_HTTP_IN_PORT", str(DEFAULT_HTTP_IN_PORT))):

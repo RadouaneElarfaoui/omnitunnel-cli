@@ -27,6 +27,12 @@ from src.omni_profile import (
 )
 from src.v2ray_parser import generate_v2ray_singbox_config
 from src.ssh_parser import parse_share_link, ssh_config_to_uri
+from src.singbox_adapter import find_singbox_lx_binary
+
+LX_INSTALL_ONELINER = (
+    "curl -fsSL https://raw.githubusercontent.com/"
+    "RadouaneElarfaoui/omnitunnel-cli/main/install-singbox-lx.sh | sudo bash"
+)
 
 _main_exit_flag = [False]
 
@@ -277,6 +283,19 @@ def menu_import_v2ray(mode):
             input("\nPress Enter to continue...")
             return
         outbound, remark = data, remark
+        if outbound.get("transport", {}).get("type") == "xhttp":
+            engine = cached_config().get('engine', 'engine_mode', fallback='singbox')
+            if engine != "singbox-lx":
+                print(f"\n{C_YELLOW}This profile uses the XHTTP transport, which needs")
+                print(f"the sing-box-lx engine (stock sing-box cannot speak XHTTP).{C_RESET}")
+                if not find_singbox_lx_binary():
+                    print(f"\nInstall it first with:\n  {C_CYAN}{LX_INSTALL_ONELINER}{C_RESET}")
+                switch = input("\nSwitch engine to sing-box-lx now? (Y/n): ").strip().lower()
+                if switch != 'n':
+                    _set_config('engine', 'engine_mode', 'singbox-lx')
+                    print(f"\n{C_GREEN}Engine set to sing-box-lx.{C_RESET}")
+                else:
+                    print(f"\n{C_YELLOW}Kept engine '{engine}' — this profile will not connect until you switch.{C_RESET}")
         sb_cfg = generate_v2ray_singbox_config(outbound)
 
         clean_remark = "".join([c for c in remark if c.isalnum() or c in ('-', '_')]).strip() or "v2ray_profile"
@@ -676,10 +695,25 @@ def _edit_payload_text():
 # ---------------------------------------------------------------------------
 # Engine menu
 # ---------------------------------------------------------------------------
-def _toggle_engine():
-    cur = cached_config().get('engine', 'engine_mode', fallback='singbox')
-    new = 'redsocks' if cur == 'singbox' else 'singbox'
-    _set_config('engine', 'engine_mode', new)
+def _set_engine_mode(val):
+    _set_config('engine', 'engine_mode', val)
+
+
+def menu_pick_engine(mode):
+    def _lab(key, label):
+        def _fn():
+            cur = cached_config().get('engine', 'engine_mode', fallback='singbox')
+            mark = f" {C_GREEN}●{C_RESET}" if cur == key else ""
+            return f"{label}{mark}"
+        return _fn
+
+    options = [
+        ('1', _lab('singbox', 'Sing-Box     (default TUN engine)'), break_after(functools.partial(_set_engine_mode, 'singbox'))),
+        ('2', _lab('singbox-lx', 'Sing-Box LX  (XHTTP transport fork)'), break_after(functools.partial(_set_engine_mode, 'singbox-lx'))),
+        ('3', _lab('redsocks', 'Redsocks     (legacy, no TUN)'), break_after(functools.partial(_set_engine_mode, 'redsocks'))),
+        ('B', '← Back', STATUS_BREAK),
+    ]
+    run_menu("Engine", options, mode=mode)
 
 
 def _run_bbr():
@@ -713,7 +747,8 @@ def _set_log_level(level):
 def menu_edit_engine(mode):
     def lab_engine():
         v = cached_config().get('engine', 'engine_mode', fallback='singbox')
-        label = "Sing-Box" if v == 'singbox' else "Redsocks (Legacy)"
+        label = {"singbox": "Sing-Box", "singbox-lx": "Sing-Box LX",
+                 "redsocks": "Redsocks (Legacy)"}.get(v, v)
         return f"Engine       {C_CYAN}{label} ({v}){C_RESET}"
 
     def lab_log():
@@ -721,7 +756,7 @@ def menu_edit_engine(mode):
         return f"Sing-Box Log {C_CYAN}{v}{C_RESET}"
 
     options = [
-        ('1', lab_engine, stay_after(_toggle_engine)),
+        ('1', lab_engine, stay_after(functools.partial(menu_pick_engine, mode))),
         ('2', lab_log, stay_after(functools.partial(_log_level_menu, mode))),
         ('3', 'TCP BBR Optimization (run once)', stay_after(_run_bbr)),
         ('B', '← Back', STATUS_BREAK),

@@ -77,7 +77,8 @@ def status_snapshot(config):
     """Single source for Current Configuration lines — used by print and Edit."""
     mode = config.get('mode', 'connection_mode', fallback='0')
     engine_mode = config.get('engine', 'engine_mode', fallback='singbox')
-    engine_label = "Sing-Box" if engine_mode == 'singbox' else "Redsocks (Legacy)"
+    engine_label = {"singbox": "Sing-Box", "singbox-lx": "Sing-Box LX",
+                    "redsocks": "Redsocks (Legacy)"}.get(engine_mode, engine_mode)
     sb_log_level = config.get('engine', 'singbox_log_level', fallback='warn')
     ssh_host = config.get('ssh', 'host', fallback='None')
     ssh_port = config.get('ssh', 'port', fallback='None')

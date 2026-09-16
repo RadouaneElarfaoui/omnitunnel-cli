@@ -22,6 +22,29 @@ def find_singbox_binary():
             return path
     return None
 
+def find_singbox_lx_binary():
+    """Locate sing-box-lx binary (sing-box fork with XHTTP transport).
+
+    install-singbox-lx.sh symlinks it into a PATH bin dir, so which()
+    is the whole lookup. Never shadows the stock `sing-box` binary.
+    """
+    return shutil.which("sing-box-lx")
+
+ENGINE_MODES = ("singbox", "singbox-lx", "redsocks")
+
+def find_engine_binary(engine_mode):
+    """Resolve the tunnel binary for an engine mode.
+
+    Returns the binary path, or None when the engine's binary is missing
+    (caller reports what to install). Unknown modes fall back to stock
+    sing-box so legacy configs keep working.
+    """
+    if engine_mode == "singbox-lx":
+        return find_singbox_lx_binary()
+    if engine_mode == "redsocks":
+        return None
+    return find_singbox_binary()
+
 def generate_singbox_config(config_input, socks_port=1080, tun_interface="tun0", output_mode="tun",
                            socks_in_port=1081, http_in_port=8080) -> dict:
     """
