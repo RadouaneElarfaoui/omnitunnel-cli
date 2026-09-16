@@ -137,22 +137,5 @@ class TestV2RayParser(unittest.TestCase):
         self.assertTrue(outbound["tls"]["insecure"])
         self.assertEqual(outbound["tls"]["alpn"], ["http/1.1"])
 
-    def test_dns_escape_rule_for_domain_server(self):
-        outbound, _ = parse_v2ray_uri(
-            "trojan://pw@edge.example.com:443?security=tls&type=ws#T")
-        cfg = generate_v2ray_singbox_config(outbound)
-        tags = [s["tag"] for s in cfg["dns"]["servers"]]
-        self.assertIn("local-dns", tags)
-        trojan_out = [o for o in cfg["outbounds"] if o["tag"] == "trojan-out"][0]
-        self.assertEqual(trojan_out["domain_resolver"], "local-dns")
-
-    def test_no_dns_escape_rule_for_ip_server(self):
-        outbound, _ = parse_v2ray_uri(
-            "trojan://pw@1.2.3.4:443?security=tls&type=ws#T")
-        cfg = generate_v2ray_singbox_config(outbound)
-        tags = [s["tag"] for s in cfg["dns"]["servers"]]
-        self.assertNotIn("local-dns", tags)
-        self.assertNotIn("rules", cfg["dns"])
-
 if __name__ == '__main__':
     unittest.main()

@@ -10,7 +10,6 @@ import sys
 import json
 import base64
 import binascii
-import ipaddress
 import urllib.parse
 
 def safe_b64decode(s: str) -> str:
@@ -42,14 +41,6 @@ def _parse_alpn(params, transport_type) -> list:
         # negotiate HTTP/2 and the upgrade dies (EOF on every dial).
         items = [a for a in items if a != "h2"] or ["http/1.1"]
     return items
-
-
-def _is_ip_literal(host: str) -> bool:
-    try:
-        ipaddress.ip_address(host)
-        return True
-    except ValueError:
-        return False
 
 
 def parse_vless(uri: str) -> tuple:
@@ -393,24 +384,12 @@ def generate_v2ray_singbox_config(outbound_dict: dict, tun_interface="tun0", log
         _sys2.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         from src.singbox_adapter import build_base_singbox, tun_inbound, direct_outbound
 
-    cfg = build_base_singbox(
+    return build_base_singbox(
         log_level=log_level,
         detour_tag=outbound_dict["tag"],
         inbounds=[tun_inbound(tun_interface)],
         outbounds=[outbound_dict, direct_outbound()],
     )
-
-    # DNS escape hatch: when the outbound server is a domain, resolving it
-    # via DoH deadlocks (DoH detours through the very outbound being dialed).
-    # 1.14-native fix: per-outbound domain_resolver to the system resolver;
-    # everything else keeps going through DoH inside the tunnel.
-    server = outbound_dict.get("server", "")
-    if server and not _is_ip_literal(server):
-        cfg["dns"]["servers"].append({"tag": "local-dns", "type": "local"})
-        for out in cfg["outbounds"]:
-            if out.get("tag") == outbound_dict["tag"]:
-                out["domain_resolver"] = "local-dns"
-    return cfg
 
 if __name__ == '__main__':
     if len(sys.argv) > 1:
