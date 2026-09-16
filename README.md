@@ -7,7 +7,7 @@
 
 **OmniTunnel CLI** is a command-line VPN client based on SSH tunnels, V2Ray/Xray protocols, and HTTP payload injection, designed to bypass network restrictions under **Linux (Ubuntu/Debian)** and **Android (Termux)**.
 
-- **V2Ray / Xray / Sing-Box**: import share links (`vless://`, `vmess://`, `trojan://`, `ss://`, `hy2://`).
+- **Share links**: import/export `ssh://` SSH profiles plus V2Ray/Xray (`vless://`, `vmess://`, `trojan://`, `ss://`, `hy2://`).
 - **Sing-Box TUN Engine**: `tun0` with DoH caching.
 - **Proxy Mode**: expose SOCKS5 (`1081`) + HTTP (`8080`) ports instead of TUN — `otunnel` → `Run Proxy` or `runvpn.sh --proxy`.
 - **Encrypted `.ot` profiles**: export/import with PBKDF2 password protection.

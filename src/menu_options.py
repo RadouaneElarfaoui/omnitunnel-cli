@@ -29,6 +29,7 @@ from src.omni_profile import (
     InvalidProfileFormatError
 )
 from src.v2ray_parser import parse_v2ray_uri, generate_v2ray_singbox_config
+from src.ssh_parser import parse_share_link, ssh_config_to_uri
 
 _main_exit_flag = [False]
 
@@ -212,10 +213,68 @@ def _import_both(config_dict, meta):
     _import_save_library(config_dict, meta)
 
 
+def _import_ssh_profile(config_dict, remark, mode):
+    """Activate an ssh:// profile: merge its sections into active.ot."""
+    applied = []
+    for section, values in config_dict.items():
+        if not isinstance(values, dict):
+            continue
+        for key, val in values.items():
+            _set_config(section, key, str(val))
+        applied.append(f"{section}: {', '.join(values.keys())}")
+    print(f"\n{C_GREEN}SSH Profile '{remark}' imported as active configuration!{C_RESET}")
+    for line in applied:
+        print(f"  {C_CYAN}{line}{C_RESET}")
+    save = input("\nSave to profile library as well? (Y/n): ").strip().lower()
+    if save != 'n':
+        ensure_saved_configs_dir()
+        profile_name = clean_filename(remark) or "SSH_Profile"
+        lib_path = os.path.join(SAVED_CONFIGS_DIR, f"{profile_name}.ot")
+        try:
+            export_profile_to_omni(read_config(), profile_name=profile_name, output_path=lib_path)
+            print(f"  {C_GREEN}Saved to library as '{profile_name}'!{C_RESET}")
+        except Exception as e:
+            print(f"  {C_RED}Error saving to library: {e}{C_RESET}")
+
+
+def menu_share_ssh(mode):
+    """Print (and copy, if possible) the active config as an ssh:// link."""
+    _frame()
+    try:
+        config = read_config()
+    except Exception as e:
+        print(f"\n{C_RED}Error reading configuration: {e}{C_RESET}")
+        input("\nPress Enter to continue...")
+        return
+    label = input("Label for this link (optional, becomes #Remark): ").strip()
+    try:
+        link = ssh_config_to_uri(config, remark=label)
+    except ValueError as e:
+        print(f"\n{C_RED}{e}{C_RESET}")
+        input("\nPress Enter to continue...")
+        return
+    print(f"\n{C_GREEN}SSH share link:{C_RESET}\n  {C_CYAN}{link}{C_RESET}\n")
+    copied = False
+    for cmd in (["wl-copy"], ["xclip", "-selection", "clipboard"], ["xsel", "--clipboard", "--input"]):
+        if shutil.which(cmd[0]):
+            try:
+                subprocess.run(cmd, input=link, text=True, check=True,
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
+                copied = True
+                break
+            except Exception:
+                continue
+    if copied:
+        print(f"{C_GREEN}Copied to clipboard.{C_RESET}")
+    else:
+        print(f"{C_YELLOW}Clipboard tool not found (wl-copy/xclip/xsel) — copy manually.{C_RESET}")
+    input("\nPress Enter to continue...")
+
+
 def menu_import_v2ray(mode):
     _frame()
-    print(f"\n{C_BOLD}Import V2Ray / Xray Share Link (VLESS, VMess, Trojan, SS, Hy2):{C_RESET}\n")
-    print("Paste your share URI (e.g. vless://..., vmess://..., trojan://..., ss://..., hy2://...):")
+    print(f"\n{C_BOLD}Import Share Link (SSH, VLESS, VMess, Trojan, SS, Hy2):{C_RESET}\n")
+    print("Paste your share URI (e.g. ssh://..., vless://..., vmess://..., trojan://..., ss://..., hy2://...):")
     print("(Or enter path to a text file containing the URI link)\n")
 
     input_str = input(f"{C_BOLD}Share Link or File Path: {C_RESET}").strip()
@@ -234,7 +293,12 @@ def menu_import_v2ray(mode):
             return
 
     try:
-        outbound, remark = parse_v2ray_uri(input_str)
+        kind, data, remark = parse_share_link(input_str)
+        if kind == "ssh":
+            _import_ssh_profile(data, remark, mode)
+            input("\nPress Enter to continue...")
+            return
+        outbound, remark = data, remark
         sb_cfg = generate_v2ray_singbox_config(outbound)
 
         clean_remark = "".join([c for c in remark if c.isalnum() or c in ('-', '_')]).strip() or "v2ray_profile"
@@ -254,7 +318,7 @@ def menu_import_v2ray(mode):
             _set_config('v2ray', 'active_remark', remark)
             print(f"\n{C_GREEN}Connection mode set to V2Ray Profile ({remark})!{C_RESET}")
     except Exception as e:
-        print(f"\n{C_RED}Error parsing V2Ray share link: {e}{C_RESET}")
+        print(f"\n{C_RED}Error parsing share link: {e}{C_RESET}")
     input("\nPress Enter to continue...")
 
 
@@ -361,10 +425,11 @@ def menu_import_omni_portal(mode):
 def menu_import_main(mode):
     options = [
         ('1', '.ot File (portal file picker)', stay_after(lambda: menu_import_omni_portal(mode))),
-        ('2', 'Xray Share Link (vless, vmess, trojan, ss, hy2)', stay_after(lambda: menu_import_v2ray(mode))),
+        ('2', 'Share Link (ssh, vless, vmess, trojan, ss, hy2)', stay_after(lambda: menu_import_v2ray(mode))),
+        ('3', 'Share current config as ssh:// link', stay_after(lambda: menu_share_ssh(mode))),
         ('B', '← Back', STATUS_BREAK),
     ]
-    run_menu("Import  —  choose source", options, mode=mode)
+    run_menu("Import / Share  —  choose source", options, mode=mode)
 
 
 # ---------------------------------------------------------------------------
