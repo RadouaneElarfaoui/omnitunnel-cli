@@ -11,6 +11,13 @@
 #   bash install-singbox-lx.sh
 set -euo pipefail
 
+# Fail fast: /opt needs root (Termux sets PREFIX and is exempt).
+if [ -z "${PREFIX:-}" ] && [ "$(id -u)" -ne 0 ]; then
+    echo -e "\033[1;31m[✕] Run as root — this installs to /opt and /usr/local/bin.\033[0m"
+    echo "    curl -fsSL https://raw.githubusercontent.com/RadouaneElarfaoui/omnitunnel-cli/main/install-singbox-lx.sh | sudo bash"
+    exit 1
+fi
+
 LX_VERSION="${LX_VERSION:-v1.14.1-lx.3}"
 REPO="${LX_REPO:-Leadaxe/sing-box-lx}"
 
