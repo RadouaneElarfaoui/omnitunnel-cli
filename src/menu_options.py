@@ -879,23 +879,41 @@ def menu_edit(mode):
     def lab_open_raw():
         return f"Open Raw Config   {C_CYAN}active.ot in editor{C_RESET}"
 
+    def lab_v2ray():
+        s = cached_snapshot()
+        base = os.path.basename(s['v2ray_config']) if s['v2ray_config'] not in ('None', '') else '—'
+        return f"V2Ray Profile   {C_YELLOW}{s['v2ray_remark']}{C_RESET} ({base})"
+
     # Actions: each line edits the underlying field(s); composite lines
     # open the focused inline submenu so you still cycle the same preview.
     # VPN Engine / Log Level at bottom (rarely changed) — mirrors
     # print_current_status order in src/menu_common.py:105.
-    options = [
-        ('1', lab_mode,       stay_after(functools.partial(menu_edit_connection_mode, mode))),
-        ('2', lab_ssh_server, stay_after(functools.partial(menu_edit_ssh, mode))),
-        ('3', lab_proxy,      stay_after(_edit_proxy_inline)),
-        ('4', lab_payload,    stay_after(_edit_payload_text)),
-        ('5', lab_sni,        stay_after(functools.partial(_edit_val, 'sni', 'server_name', 'SNI Host'))),
-        ('6', lab_ssh_auth,   stay_after(_edit_auth)),
-        ('7', lab_ssh_comp,   stay_after(_edit_compression)),
-        ('8', lab_engine,     stay_after(functools.partial(menu_edit_engine, mode))),
-        ('9', lab_log,        stay_after(functools.partial(_log_level_menu, mode))),
-        ('0', lab_open_raw,   stay_after(_open_active_config)),
-        ('B', '← Back', STATUS_BREAK),
-    ]
+    if cached_snapshot()['mode'] == 'v2ray':
+        # v2ray profiles carry no SSH/proxy/payload/SNI fields — show only
+        # what applies (engine matters here: xhttp needs sing-box-lx).
+        options = [
+            ('1', lab_mode,       stay_after(functools.partial(menu_edit_connection_mode, mode))),
+            ('2', lab_v2ray,      stay_after(functools.partial(_load_config, mode))),
+            ('3', lambda: f"Re-import Link  {C_CYAN}paste a new share URI{C_RESET}", stay_after(lambda: menu_import_v2ray(mode))),
+            ('8', lab_engine,     stay_after(functools.partial(menu_edit_engine, mode))),
+            ('9', lab_log,        stay_after(functools.partial(_log_level_menu, mode))),
+            ('0', lab_open_raw,   stay_after(_open_active_config)),
+            ('B', '← Back', STATUS_BREAK),
+        ]
+    else:
+        options = [
+            ('1', lab_mode,       stay_after(functools.partial(menu_edit_connection_mode, mode))),
+            ('2', lab_ssh_server, stay_after(functools.partial(menu_edit_ssh, mode))),
+            ('3', lab_proxy,      stay_after(_edit_proxy_inline)),
+            ('4', lab_payload,    stay_after(_edit_payload_text)),
+            ('5', lab_sni,        stay_after(functools.partial(_edit_val, 'sni', 'server_name', 'SNI Host'))),
+            ('6', lab_ssh_auth,   stay_after(_edit_auth)),
+            ('7', lab_ssh_comp,   stay_after(_edit_compression)),
+            ('8', lab_engine,     stay_after(functools.partial(menu_edit_engine, mode))),
+            ('9', lab_log,        stay_after(functools.partial(_log_level_menu, mode))),
+            ('0', lab_open_raw,   stay_after(_open_active_config)),
+            ('B', '← Back', STATUS_BREAK),
+        ]
 
     run_menu("Current Configuration", options, mode=mode)
 
