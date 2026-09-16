@@ -29,14 +29,10 @@ BIN_LINK="$BIN_DIR/sing-box-lx"
 
 RED='\033[1;31m'; GREEN='\033[1;32m'; YELLOW='\033[1;33m'; BLUE='\033[1;34m'; NC='\033[0m'
 
-# Idempotent: pinned version already linked → nothing to do.
-if [ -x "$BIN_LINK" ]; then
-    INSTALLED="$("$BIN_LINK" version 2>/dev/null | head -n 1 || true)"
-    if echo "$INSTALLED" | grep -q "$LX_VERSION"; then
-        echo -e "${GREEN}[✔] sing-box-lx $LX_VERSION already installed at $BIN_LINK — skipping.${NC}"
-        exit 0
-    fi
-    echo -e "${YELLOW}[!] Different sing-box-lx present ($INSTALLED) — upgrading to $LX_VERSION.${NC}"
+# Idempotent: sing-box-lx already present → nothing to do.
+if [ -x "$BIN_LINK" ] || command -v sing-box-lx >/dev/null 2>&1; then
+    echo -e "${GREEN}[✔] sing-box-lx already installed — skipping.${NC}"
+    exit 0
 fi
 
 ARCH="$(uname -m)"
