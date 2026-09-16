@@ -6,7 +6,7 @@
 #   binary : /usr/local/bin/sing-box-lx  (-> /opt/singbox-lx/<tag>/sing-box)
 #
 # One-liner (needs sudo for /opt and /usr/local/bin):
-#   curl -fsSL https://raw.githubusercontent.com/RadouaneElarfaoui/omnitunnel-cli/63f0a9ee1d99880ed029e3cd6783e750e08f447e/install-singbox-lx.sh | sudo bash
+#   curl -fsSL https://raw.githubusercontent.com/RadouaneElarfaoui/omnitunnel-cli/main/install-singbox-lx.sh | sudo bash
 # Termux (no sudo, PREFIX-aware):
 #   bash install-singbox-lx.sh
 set -euo pipefail
