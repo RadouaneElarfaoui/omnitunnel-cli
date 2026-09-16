@@ -152,6 +152,11 @@ function connect() {
         # re-read mode per iteration (instance snapshot in proxy mode,
         # global active.ot in TUN mode)
         cur_mode=$(python3 -c "import sys; sys.path.insert(0, '$PROJECT_DIR'); from src.menu_common import read_config, status_snapshot; print(status_snapshot(read_config())['mode'])" 2>/dev/null || echo "$mode")
+        # v2ray has no SSH leg: hand straight to the sing-box launcher
+        # (same as the TUN path) instead of ssh.py, which only speaks SSH.
+        if [ "$cur_mode" = "v2ray" ]; then
+            exec sudo -E bash "$PROJECT_DIR/vpn/singbox_proxification"
+        fi
 	if [ "$cur_mode" = "0" ]
         then
            python3 "$PROJECT_DIR/src/ssh.py" 0

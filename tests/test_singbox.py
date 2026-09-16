@@ -14,7 +14,8 @@ from src.singbox_adapter import (
     find_singbox_binary,
     generate_singbox_config,
     save_singbox_config,
-    validate_singbox_config
+    validate_singbox_config,
+    apply_output_mode
 )
 
 class TestSingboxAdapter(unittest.TestCase):
@@ -81,6 +82,28 @@ class TestSingboxAdapter(unittest.TestCase):
         self.assertEqual(generate_singbox_config(cfg_dict("warn"))["log"]["level"], "warn")
         # unknown value falls back to warn
         self.assertEqual(generate_singbox_config(cfg_dict("bogus"))["log"]["level"], "warn")
+
+    def test_apply_output_mode_socks(self):
+        saved = {"inbounds": [{"type": "tun", "tag": "tun-in"}],
+                 "outbounds": [{"type": "vless", "tag": "vless-out"}],
+                 "route": {"rules": []}}
+        runtime = apply_output_mode(saved, output_mode="socks",
+                                    socks_in_port=1181, http_in_port=8180)
+        self.assertEqual([i["type"] for i in runtime["inbounds"]], ["socks", "http"])
+        self.assertEqual(runtime["inbounds"][0]["listen_port"], 1181)
+        self.assertEqual(runtime["inbounds"][1]["listen_port"], 8180)
+        # outbounds/route preserved, input untouched
+        self.assertEqual(runtime["outbounds"], saved["outbounds"])
+        self.assertEqual(runtime["route"], saved["route"])
+        self.assertEqual(saved["inbounds"][0]["type"], "tun")
+
+    def test_apply_output_mode_tun(self):
+        saved = {"inbounds": [{"type": "socks", "tag": "socks-in"}],
+                 "outbounds": [{"type": "vless", "tag": "vless-out"}]}
+        runtime = apply_output_mode(saved, output_mode="tun")
+        self.assertEqual(len(runtime["inbounds"]), 1)
+        self.assertEqual(runtime["inbounds"][0]["type"], "tun")
+        self.assertEqual(runtime["outbounds"], saved["outbounds"])
 
 if __name__ == "__main__":
     unittest.main()

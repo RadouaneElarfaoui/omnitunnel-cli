@@ -73,7 +73,7 @@ class TestSshParser(unittest.TestCase):
                        "username": "u", "password": "",
                        "auth_method": "password", "enable_compression": "n"},
                "mode": {"connection_mode": "0"},
-               "engine": {"engine_mode": "singbox"}}
+                "engine": {"engine_mode": "singbox-lx"}}
         link = ssh_config_to_uri(cfg)
         self.assertNotIn("?", link)  # all defaults → bare link
         cfg2, _ = parse_ssh_uri(link)

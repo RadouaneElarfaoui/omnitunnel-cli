@@ -284,7 +284,7 @@ def menu_import_v2ray(mode):
             return
         outbound, remark = data, remark
         if outbound.get("transport", {}).get("type") == "xhttp":
-            engine = cached_config().get('engine', 'engine_mode', fallback='singbox')
+            engine = cached_config().get('engine', 'engine_mode', fallback='singbox-lx')
             if engine != "singbox-lx":
                 print(f"\n{C_YELLOW}This profile uses the XHTTP transport, which needs")
                 print(f"the sing-box-lx engine (stock sing-box cannot speak XHTTP).{C_RESET}")
@@ -702,14 +702,14 @@ def _set_engine_mode(val):
 def menu_pick_engine(mode):
     def _lab(key, label):
         def _fn():
-            cur = cached_config().get('engine', 'engine_mode', fallback='singbox')
+            cur = cached_config().get('engine', 'engine_mode', fallback='singbox-lx')
             mark = f" {C_GREEN}●{C_RESET}" if cur == key else ""
             return f"{label}{mark}"
         return _fn
 
     options = [
-        ('1', _lab('singbox', 'Sing-Box     (default TUN engine)'), break_after(functools.partial(_set_engine_mode, 'singbox'))),
-        ('2', _lab('singbox-lx', 'Sing-Box LX  (XHTTP transport fork)'), break_after(functools.partial(_set_engine_mode, 'singbox-lx'))),
+        ('1', _lab('singbox', 'Sing-Box     (stock upstream)'), break_after(functools.partial(_set_engine_mode, 'singbox'))),
+        ('2', _lab('singbox-lx', 'Sing-Box LX  (default, +XHTTP)'), break_after(functools.partial(_set_engine_mode, 'singbox-lx'))),
         ('3', _lab('redsocks', 'Redsocks     (legacy, no TUN)'), break_after(functools.partial(_set_engine_mode, 'redsocks'))),
         ('B', '← Back', STATUS_BREAK),
     ]
@@ -746,7 +746,7 @@ def _set_log_level(level):
 
 def menu_edit_engine(mode):
     def lab_engine():
-        v = cached_config().get('engine', 'engine_mode', fallback='singbox')
+        v = cached_config().get('engine', 'engine_mode', fallback='singbox-lx')
         label = {"singbox": "Sing-Box", "singbox-lx": "Sing-Box LX",
                  "redsocks": "Redsocks (Legacy)"}.get(v, v)
         return f"Engine       {C_CYAN}{label} ({v}){C_RESET}"

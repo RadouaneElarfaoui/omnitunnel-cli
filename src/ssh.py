@@ -298,7 +298,7 @@ class sshRunn:
                 return True
 
     def _launch_engine(self):
-        engine = getattr(self, 'engine_mode', 'singbox')
+        engine = getattr(self, 'engine_mode', 'singbox-lx')
         if engine in ('singbox', 'singbox-lx'):
             script = os.path.join(PROJECT_DIR, "vpn/singbox_proxification")
             logger = log_singbox

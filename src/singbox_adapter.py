@@ -105,20 +105,7 @@ def generate_singbox_config(config_input, socks_port=1080, tun_interface="tun0",
 
     # Inbounds depend on output mode
     if output_mode == "socks":
-        inbounds = [
-            {
-                "type": "socks",
-                "tag": "socks-in",
-                "listen": "0.0.0.0",
-                "listen_port": int(socks_in_port)
-            },
-            {
-                "type": "http",
-                "tag": "http-in",
-                "listen": "0.0.0.0",
-                "listen_port": int(http_in_port)
-            }
-        ]
+        inbounds = [socks_inbound(socks_in_port), http_inbound(http_in_port)]
     else:
         inbounds = [tun_inbound(tun_interface)]
 
@@ -136,6 +123,43 @@ def generate_singbox_config(config_input, socks_port=1080, tun_interface="tun0",
             direct_outbound()
         ],
     )
+
+def socks_inbound(port=1081) -> dict:
+    """Shared SOCKS5 proxy-mode inbound block."""
+    return {
+        "type": "socks",
+        "tag": "socks-in",
+        "listen": "0.0.0.0",
+        "listen_port": int(port)
+    }
+
+
+def http_inbound(port=8080) -> dict:
+    """Shared HTTP proxy-mode inbound block."""
+    return {
+        "type": "http",
+        "tag": "http-in",
+        "listen": "0.0.0.0",
+        "listen_port": int(port)
+    }
+
+
+def apply_output_mode(cfg: dict, output_mode="tun", socks_in_port=1081,
+                       http_in_port=8080, tun_interface="tun0") -> dict:
+    """Return a copy of a sing-box config with inbounds for the output mode.
+
+    Saved v2ray profiles are generated TUN-only at import time (output mode
+    isn't known then); the launcher applies this at runtime so proxy mode
+    gets socks+http on the instance's ports instead of a verbatim TUN copy.
+    Everything else (outbounds, route, dns) is preserved untouched.
+    """
+    cfg = dict(cfg)
+    if output_mode == "socks":
+        cfg["inbounds"] = [socks_inbound(socks_in_port), http_inbound(http_in_port)]
+    else:
+        cfg["inbounds"] = [tun_inbound(tun_interface)]
+    return cfg
+
 
 def tun_inbound(tun_interface="tun0") -> dict:
     """Shared TUN inbound block (DoH DNS runs over TCP/HTTPS through it)."""

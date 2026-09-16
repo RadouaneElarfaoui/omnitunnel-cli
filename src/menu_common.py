@@ -76,7 +76,7 @@ def input_editable(prompt, default):
 def status_snapshot(config):
     """Single source for Current Configuration lines — used by print and Edit."""
     mode = config.get('mode', 'connection_mode', fallback='0')
-    engine_mode = config.get('engine', 'engine_mode', fallback='singbox')
+    engine_mode = config.get('engine', 'engine_mode', fallback='singbox-lx')
     engine_label = {"singbox": "Sing-Box", "singbox-lx": "Sing-Box LX",
                     "redsocks": "Redsocks (Legacy)"}.get(engine_mode, engine_mode)
     sb_log_level = config.get('engine', 'singbox_log_level', fallback='warn')

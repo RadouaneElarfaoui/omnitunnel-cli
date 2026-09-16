@@ -54,7 +54,7 @@ OMNI_SSH_SOCKS_PORT="$OMNI_SSH_SOCKS_PORT" OMNI_SOCKS_IN_PORT="$OMNI_SOCKS_IN_PO
 import sys, os
 sys.path.insert(0, '$PROJECT_DIR')
 from src.menu_common import read_config, status_snapshot
-from src.singbox_adapter import generate_singbox_config, save_singbox_config
+from src.singbox_adapter import generate_singbox_config, save_singbox_config, apply_output_mode
 from src.ports import get_env_port
 
 config = read_config()
@@ -75,12 +75,16 @@ if mode == 'v2ray':
     except:
         pass
     if v2ray_cfg_path and os.path.exists(v2ray_cfg_path):
-        import shutil, json
-        # validate it is a valid sing-box config before copying
+        import json
+        # Saved profiles are TUN-only (output mode isn't known at import);
+        # rewrite inbounds for the runtime mode so proxy gets socks+http on
+        # this instance's ports instead of a verbatim TUN copy.
         try:
             with open(v2ray_cfg_path, 'r', encoding='utf-8') as f:
-                json.load(f)
-            shutil.copyfile(v2ray_cfg_path, config_file)
+                saved = json.load(f)
+            runtime = apply_output_mode(saved, output_mode=output_mode,
+                                        socks_in_port=socks_in, http_in_port=http_in)
+            save_singbox_config(runtime, config_file)
         except Exception as e:
             print(f'Warning: v2ray config invalid ({e}) — generating default', flush=True)
             sb_cfg = generate_singbox_config(config, socks_port=ssh_socks, output_mode=output_mode,

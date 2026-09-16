@@ -1,6 +1,6 @@
 [English](README.md) | [Français](README.fr.md) | [Español](README.es.md) | [العربية](README.ar.md) | [Português](README.pt.md) | [中文](README.zh.md)
 
-# OmniTunnel CLI (v2.3)
+# OmniTunnel CLI (v2.4)
 
 [![GitHub license](https://img.shields.io/github/license/RadouaneElarfaoui/omnitunnel-cli?style=flat-square)](LICENSE)
 [![Platform Compatibility](https://img.shields.io/badge/platform-Ubuntu%20%7C%20Debian%20%7C%20Termux-blue?style=flat-square)](#installation)
@@ -8,7 +8,7 @@
 **OmniTunnel CLI** is a command-line VPN client based on SSH tunnels, V2Ray/Xray protocols, and HTTP payload injection, designed to bypass network restrictions under **Linux (Ubuntu/Debian)** and **Android (Termux)**.
 
 - **Share links**: import/export `ssh://` SSH profiles plus V2Ray/Xray (`vless://`, `vmess://`, `trojan://`, `ss://`, `hy2://`).
-- **Sing-Box TUN Engine**: `tun0` with DoH caching.
+- **Sing-Box LX Engine** (default): `tun0` with DoH caching, plus XHTTP transport support. Stock sing-box also works (no XHTTP).
 - **Proxy Mode**: expose SOCKS5 (`1081`) + HTTP (`8080`) ports instead of TUN — `otunnel` → `Run Proxy` or `runvpn.sh --proxy`.
 - **Encrypted `.ot` profiles**: export/import with PBKDF2 password protection.
 - **Kernel TCP BBR** optimization.
@@ -20,11 +20,19 @@
 ### Installation (Debian / Ubuntu)
 
 ```bash
-# 1. Sing-Box engine (if not installed)
-wget -O /tmp/sing-box_1.14.0_linux_amd64.deb https://github.com/SagerNet/sing-box/releases/download/v1.14.0/sing-box_1.14.0_linux_amd64.deb && sudo apt install -y /tmp/sing-box_1.14.0_linux_amd64.deb
+# 1. Sing-Box LX engine (default; includes XHTTP transport)
+curl -fsSL https://raw.githubusercontent.com/RadouaneElarfaoui/omnitunnel-cli/main/install-singbox-lx.sh | sudo bash
 
 # 2. OmniTunnel CLI
-wget -O /tmp/omnitunnel-cli_2.3.deb https://github.com/RadouaneElarfaoui/omnitunnel-cli/releases/download/v2.3/omnitunnel-cli_2.3.deb && sudo apt install -y /tmp/omnitunnel-cli_2.3.deb
+wget -O /tmp/omnitunnel-cli_2.4.deb https://github.com/RadouaneElarfaoui/omnitunnel-cli/releases/download/v2.4/omnitunnel-cli_2.4.deb && sudo apt install -y /tmp/omnitunnel-cli_2.4.deb
+```
+
+### Alternative engine (optional — pick ONE, not both)
+
+Prefer stock upstream sing-box over LX (loses XHTTP support)? Install this **instead of** step 1 above:
+
+```bash
+wget -O /tmp/sing-box_1.14.0_linux_amd64.deb https://github.com/SagerNet/sing-box/releases/download/v1.14.0/sing-box_1.14.0_linux_amd64.deb && sudo apt install -y /tmp/sing-box_1.14.0_linux_amd64.deb
 ```
 ### Manual installation
 

@@ -17,7 +17,7 @@ Query params (all optional):
     payload   URL-encoded HTTP payload template
     key       private-key path (publickey auth; overrides userinfo password)
     compress  y | n  (SSH compression, default: n)
-    engine    singbox | redsocks              (default: singbox)
+    engine    singbox | singbox-lx | redsocks  (default: singbox-lx)
 
 Examples:
     ssh://alice:s3cr3t@vps.example.com:22#MyVPS
@@ -33,11 +33,11 @@ DEFAULT_SSH_PORT = "22"
 DEFAULT_AUTH = "password"
 DEFAULT_MODE = "0"
 DEFAULT_COMPRESS = "n"
-DEFAULT_ENGINE = "singbox"
+DEFAULT_ENGINE = "singbox-lx"
 
 _VALID_MODES = ("0", "1", "2", "3")
 _VALID_AUTHS = ("password", "publickey")
-_VALID_ENGINES = ("singbox", "redsocks")
+_VALID_ENGINES = ("singbox", "singbox-lx", "redsocks")
 
 
 def is_ssh_uri(uri: str) -> bool:
@@ -82,7 +82,7 @@ def parse_ssh_uri(uri: str) -> tuple:
         raise ValueError(f"Invalid compress={compress!r} (expected y|n)")
     engine = _one("engine", DEFAULT_ENGINE).strip().lower() or DEFAULT_ENGINE
     if engine not in _VALID_ENGINES:
-        raise ValueError(f"Invalid engine={engine!r} (expected singbox|redsocks)")
+        raise ValueError(f"Invalid engine={engine!r} (expected singbox|singbox-lx|redsocks)")
 
     # publickey: `key` param is the key path; falls back to userinfo password
     # (this codebase resolves the password field as a key path for publickey).
