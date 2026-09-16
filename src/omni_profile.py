@@ -135,8 +135,12 @@ def export_profile_to_omni(config, profile_name: str, note: str = "", password: 
         parent_dir = os.path.dirname(os.path.abspath(output_path))
         if parent_dir and not os.path.exists(parent_dir):
             os.makedirs(parent_dir, exist_ok=True)
-        with open(output_path, 'w', encoding='utf-8') as f:
+        # Atomic write (tmp + os.replace): a concurrent reader never sees a
+        # torn profile, and a crash never leaves a half-written .ot behind.
+        tmp_path = f"{output_path}.tmp-{os.getpid()}"
+        with open(tmp_path, 'w', encoding='utf-8') as f:
             json.dump(metadata, f, ensure_ascii=False, indent=2)
+        os.replace(tmp_path, output_path)
 
     return metadata
 

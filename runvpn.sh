@@ -116,11 +116,22 @@ pkill -P $$ 2>/dev/null || true
 echo -e "[+] DONE ${SCOLOR}"
 }
 
+# Exit-only cleanup for proxy mode: process kill + remove this instance's
+# profile snapshot (killprocess_proxy alone runs after every reconnect and
+# must NOT delete the snapshot mid-loop).
+cleanup_instance() {
+killprocess_proxy 2>/dev/null || true
+if [ "${OMNI_PROFILE_OWNED:-}" = "1" ] && [ -n "${OMNI_PROFILE_PATH:-}" ]; then
+    rm -f "$OMNI_PROFILE_PATH" 2>/dev/null || true
+fi
+}
+
 # Intercept Ctrl+C (SIGINT) and SIGTERM to stop everything immediately
 # Proxy mode uses scoped cleanup (parallel instances safe); TUN keeps global.
+# Instance snapshot removal happens only on exit, never between reconnects.
 if [ "$OUTPUT_MODE" = "socks" ]; then
-    trap 'killprocess_proxy; exit 1' INT TERM
-    trap 'killprocess_proxy' EXIT
+    trap 'cleanup_instance; exit 1' INT TERM
+    trap 'cleanup_instance' EXIT
 else
     trap 'killprocess; exit 1' INT TERM
     trap 'killprocess' EXIT
@@ -138,7 +149,8 @@ function serverlistening() {
 }
 function connect() {
         localport="$1"
-        # re-read mode per iteration in case config changed (or active.ot swapped)
+        # re-read mode per iteration (instance snapshot in proxy mode,
+        # global active.ot in TUN mode)
         cur_mode=$(python3 -c "import sys; sys.path.insert(0, '$PROJECT_DIR'); from src.menu_common import read_config, status_snapshot; print(status_snapshot(read_config())['mode'])" 2>/dev/null || echo "$mode")
 	if [ "$cur_mode" = "0" ]
         then
@@ -170,6 +182,19 @@ print('export OMNI_SSH_SOCKS_PORT=%s OMNI_SOCKS_IN_PORT=%s OMNI_HTTP_IN_PORT=%s 
     }
     export OMNI_SSH_SOCKS_PORT OMNI_SOCKS_IN_PORT OMNI_HTTP_IN_PORT OMNI_INJECTOR_PORT
     echo -e "${GREEN}[+] Proxy instance ports: SSH -D ${OMNI_SSH_SOCKS_PORT}, SOCKS ${OMNI_SOCKS_IN_PORT}, HTTP ${OMNI_HTTP_IN_PORT}, injector ${OMNI_INJECTOR_PORT}${SCOLOR}"
+    # Instance profile snapshot: cp the source .ot once, point the whole
+    # instance at the copy via OMNI_PROFILE_PATH. Later menu edits / loads
+    # can never re-route or corrupt this running instance, and two parallel
+    # proxies can use two different profiles. Source is OMNI_PROFILE_SRC
+    # (otunnel run <profile> --proxy) or the global active.ot otherwise.
+    PROFILE_SRC="${OMNI_PROFILE_SRC:-$PROJECT_DIR/cfgs/saved/active.ot}"
+    export OMNI_PROFILE_PATH="/tmp/omnitunnel-active-${OMNI_SOCKS_IN_PORT}.ot"
+    export OMNI_PROFILE_OWNED=1
+    if ! cp "$PROFILE_SRC" "$OMNI_PROFILE_PATH" 2>/dev/null; then
+        echo -e "${RED}Error: cannot snapshot profile '$PROFILE_SRC' — aborting instance.${SCOLOR}"
+        exit 1
+    fi
+    echo -e "${GREEN}[+] Proxy instance profile: ${PROFILE_SRC} → ${OMNI_PROFILE_PATH}${SCOLOR}"
     # No global kill here — that would take down other proxy instances.
     for i in {1..9999}
     do

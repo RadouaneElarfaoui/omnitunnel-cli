@@ -119,18 +119,21 @@ def frame():
 # ---- render cache: menus re-render on every keypress, don't re-parse ----
 # active.ot on every label. Invalidated by file mtime, so edits via
 # _set_config / write_config are picked up on the next render.
-_render_cache = {"mtime": None, "config": None, "snapshot": None}
+_render_cache = {"path": None, "mtime": None, "config": None, "snapshot": None}
 
 
 def cached_config():
-    """read_config() cached by active.ot mtime (see _render_cache)."""
+    """read_config() cached by profile-file mtime (see _render_cache)."""
+    path = effective_config_path()
     try:
-        mtime = os.path.getmtime(CONFIG_PATH)
+        mtime = os.path.getmtime(path)
     except OSError:
         mtime = None
-    if mtime != _render_cache["mtime"] or _render_cache["config"] is None:
+    if (path != _render_cache["path"] or mtime != _render_cache["mtime"]
+            or _render_cache["config"] is None):
         _render_cache["config"] = read_config()
         _render_cache["snapshot"] = status_snapshot(_render_cache["config"])
+        _render_cache["path"] = path
         _render_cache["mtime"] = mtime
     return _render_cache["config"]
 
@@ -171,13 +174,38 @@ def clear_screen():
     os.system('clear' if os.name == 'posix' else 'cls')
 
 
+def effective_config_path():
+    """Which profile file the runtime reads.
+
+    Parallel proxy instances snapshot their profile to a per-instance file
+    and point OMNI_PROFILE_PATH at it — so editing/loading profiles while
+    instances run can never re-route or corrupt them. Unset = global
+    active.ot (menu + single-instance TUN behavior, unchanged).
+    """
+    return os.environ.get("OMNI_PROFILE_PATH") or CONFIG_PATH
+
+
 def read_config():
+    override = os.environ.get("OMNI_PROFILE_PATH")
+    if override:
+        # Instance snapshot: read exactly this file. Fail closed (empty
+        # config → validation aborts) — never fall back to another profile
+        # and never write anything.
+        try:
+            cfg_dict, _ = import_profile_from_omni(override)
+            return dict_to_configparser(cfg_dict)
+        except Exception:
+            return configparser.ConfigParser()
     if os.path.exists(CONFIG_PATH):
         try:
             cfg_dict, _ = import_profile_from_omni(CONFIG_PATH)
             return dict_to_configparser(cfg_dict)
         except Exception:
-            pass
+            # Corrupt active.ot: fail closed. Never re-seed from the example
+            # here — that used to silently clobber the user's live profile
+            # back to placeholders on any torn/failed read.
+            return configparser.ConfigParser()
+    # First run (no active.ot yet): seed from the example template.
     if os.path.exists(CONFIG_EXAMPLE_PATH):
         try:
             cfg_dict, _ = import_profile_from_omni(CONFIG_EXAMPLE_PATH)
