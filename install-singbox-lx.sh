@@ -52,14 +52,15 @@ TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
 echo -e "${BLUE}[*] Downloading sing-box-lx $LX_VERSION ($LX_ARCH)...${NC}"
-if command -v curl >/dev/null 2>&1; then
-    curl -fsSL -o "$TMP_DIR/$TARBALL" "$BASE_URL/$TARBALL"
-    curl -fsSL -o "$TMP_DIR/SHA256SUMS" "$BASE_URL/SHA256SUMS"
-elif command -v wget >/dev/null 2>&1; then
-    wget -q -O "$TMP_DIR/$TARBALL" "$BASE_URL/$TARBALL"
+# wget -c: resumable + progress bar. curl kept as fallback (also resumable via -C -).
+if command -v wget >/dev/null 2>&1; then
+    wget -c --show-progress --progress=bar:force -P "$TMP_DIR" "$BASE_URL/$TARBALL"
     wget -q -O "$TMP_DIR/SHA256SUMS" "$BASE_URL/SHA256SUMS"
+elif command -v curl >/dev/null 2>&1; then
+    curl -fSL -C - --progress-bar -o "$TMP_DIR/$TARBALL" "$BASE_URL/$TARBALL"
+    curl -fsSL -o "$TMP_DIR/SHA256SUMS" "$BASE_URL/SHA256SUMS"
 else
-    echo -e "${RED}[✕] Need curl or wget to download sing-box-lx.${NC}"
+    echo -e "${RED}[✕] Need wget or curl to download sing-box-lx.${NC}"
     exit 1
 fi
 
