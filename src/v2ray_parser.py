@@ -79,7 +79,12 @@ def parse_vless(uri: str) -> tuple:
         outbound["tls"] = tls_config
         alpn = params.get("alpn", [""])[0]
         if alpn:
-            outbound["tls"]["alpn"] = [a.strip() for a in alpn.split(",") if a.strip()]
+            alpn_list = [a.strip() for a in alpn.split(",") if a.strip()]
+            if transport_type == "ws":
+                # WS upgrade requires HTTP/1.1: offering h2 makes CDNs
+                # negotiate HTTP/2 and the upgrade dies (EOF on every dial).
+                alpn_list = [a for a in alpn_list if a != "h2"] or ["http/1.1"]
+            outbound["tls"]["alpn"] = alpn_list
 
     # Transport Configuration
     if transport_type == "ws":

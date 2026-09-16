@@ -47,6 +47,15 @@ class TestXhttpParsing(unittest.TestCase):
         self.assertEqual(outbound["transport"]["mode"], "auto")
         self.assertNotIn("alpn", outbound.get("tls", {}))
 
+    def test_ws_strips_h2_from_alpn(self):
+        # WS upgrade requires HTTP/1.1: forwarding h2 makes CDNs negotiate
+        # HTTP/2 and every dial dies with EOF.
+        outbound, _ = parse_vless(
+            "vless://aaaa1111-2222-4333-8444-555555555555@1.2.3.4:443"
+            "?security=tls&type=ws&path=/w&alpn=h2,http/1.1#t"
+        )
+        self.assertEqual(outbound["tls"]["alpn"], ["http/1.1"])
+
     def test_xhttp_validates_on_lx_only(self):
         lx = find_singbox_lx_binary()
         if not lx:
