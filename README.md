@@ -1,6 +1,6 @@
 [English](README.md) | [Français](README.fr.md) | [Español](README.es.md) | [العربية](README.ar.md) | [Português](README.pt.md) | [中文](README.zh.md)
 
-# OmniTunnel CLI (v2.4)
+# OmniTunnel CLI (v2.5)
 
 [![GitHub license](https://img.shields.io/github/license/RadouaneElarfaoui/omnitunnel-cli?style=flat-square)](LICENSE)
 [![Platform Compatibility](https://img.shields.io/badge/platform-Ubuntu%20%7C%20Debian%20%7C%20Termux-blue?style=flat-square)](#installation)
@@ -24,7 +24,7 @@
 curl -fsSL https://raw.githubusercontent.com/RadouaneElarfaoui/omnitunnel-cli/main/install-singbox-lx.sh | sudo bash
 
 # 2. OmniTunnel CLI
-wget -O /tmp/omnitunnel-cli_2.4.deb https://github.com/RadouaneElarfaoui/omnitunnel-cli/releases/download/v2.4/omnitunnel-cli_2.4.deb && sudo apt install -y /tmp/omnitunnel-cli_2.4.deb
+wget -O /tmp/omnitunnel-cli_2.5.deb https://github.com/RadouaneElarfaoui/omnitunnel-cli/releases/download/v2.5/omnitunnel-cli_2.5.deb && sudo apt install -y /tmp/omnitunnel-cli_2.5.deb
 ```
 
 ### Alternative engine (optional — pick ONE, not both)

@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.5
+
+* **Launcher bakes outbound server IPs at startup**: `vpn/singbox_proxification` resolves every domain `server` across outbounds via system DNS and writes the IP into the runtime config (`Resolved host -> ip` in logs) — the tunnel never resolves its own endpoint through itself, so the DoH-detour deadlock (`lookup ...: context deadline exceeded`) is gone for every protocol (vless/vmess/trojan/ss/hy2), both engines, TUN and proxy alike; TLS SNI / WS Host headers still carry the hostname so the handshake is unchanged, `socks-out`/`direct`/DoH untouched, unresolvable hosts left as-is with a warning, re-resolved on every (re)connect; audited all five v2ray parsers plus SSH modes and validated the full pipeline (import → socks rewrite → bake) against real `sing-box check`. The interim `local-dns`/`domain_resolver` workarounds are reverted (superseded, plus 1.14 rejects the route-field shape).
+* **Trojan parser parity**: `allowInsecure`/`insecure` → `tls.insecure` and `alpn` (with the ws `h2`-strip) via the shared `_parse_insecure`/`_parse_alpn` helpers; `install-singbox-lx.sh` now exits when any `sing-box-lx` is already present; `build-deb.sh` bump `2.4` → `2.5`.
+
 ## v2.4
 
 * **sing-box-lx now the default engine**: `singbox-lx` (Leadaxe fork with XHTTP transport) joins `singbox`/`redsocks` as a third `engine_mode` and becomes the default everywhere (`ssh_parser.py` `DEFAULT_ENGINE`, `status_snapshot`, menus, `ssh.py`); new `install-singbox-lx.sh` one-liner installs it side-by-side as `sing-box-lx` (pinned `v1.14.1-lx.3`, `wget -c` resumable into `/tmp`, SHA-verified, sudo only for `/opt` install steps, never shadows stock); `find_engine_binary()` resolves per-engine (lx is PATH-only), 3-way engine picker replaces the toggle, `ssh://` links accept `engine=singbox-lx`; run path fails closed with switch/install hints (stock + xhttp profile, or lx selected but binary missing); README pushes stock down to an optional alternative-engine section.
