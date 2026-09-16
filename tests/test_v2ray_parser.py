@@ -143,10 +143,8 @@ class TestV2RayParser(unittest.TestCase):
         cfg = generate_v2ray_singbox_config(outbound)
         tags = [s["tag"] for s in cfg["dns"]["servers"]]
         self.assertIn("local-dns", tags)
-        self.assertEqual(cfg["route"]["rules"][0],
-                         {"domain": ["edge.example.com"],
-                          "action": "route",
-                          "domain_resolver": "local-dns"})
+        trojan_out = [o for o in cfg["outbounds"] if o["tag"] == "trojan-out"][0]
+        self.assertEqual(trojan_out["domain_resolver"], "local-dns")
 
     def test_no_dns_escape_rule_for_ip_server(self):
         outbound, _ = parse_v2ray_uri(
