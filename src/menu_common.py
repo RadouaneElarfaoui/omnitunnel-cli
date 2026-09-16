@@ -1,24 +1,16 @@
 #!/usr/bin/env python3
 import os
 import sys
-import json
 import configparser
 import subprocess
-import shutil
-import getpass
 import termios
 import tty
 import readline
 from src.omni_profile import (
     export_profile_to_omni,
     import_profile_from_omni,
-    save_omni_to_ini_file,
-    config_to_dict,
     dict_to_configparser,
-    InvalidPasswordError,
-    InvalidProfileFormatError
 )
-from src.v2ray_parser import parse_v2ray_uri, generate_v2ray_singbox_config
 
 # Colors
 C_BLUE = '\033[1;34m'
@@ -122,6 +114,31 @@ def frame():
     """Clear and show header — replaces ad-hoc _frame() duplicates."""
     clear_screen()
     show_header()
+
+
+# ---- render cache: menus re-render on every keypress, don't re-parse ----
+# active.ot on every label. Invalidated by file mtime, so edits via
+# _set_config / write_config are picked up on the next render.
+_render_cache = {"mtime": None, "config": None, "snapshot": None}
+
+
+def cached_config():
+    """read_config() cached by active.ot mtime (see _render_cache)."""
+    try:
+        mtime = os.path.getmtime(CONFIG_PATH)
+    except OSError:
+        mtime = None
+    if mtime != _render_cache["mtime"] or _render_cache["config"] is None:
+        _render_cache["config"] = read_config()
+        _render_cache["snapshot"] = status_snapshot(_render_cache["config"])
+        _render_cache["mtime"] = mtime
+    return _render_cache["config"]
+
+
+def cached_snapshot():
+    """status_snapshot() over the cached config (one parse per render)."""
+    cached_config()
+    return _render_cache["snapshot"]
 
 
 def is_root():

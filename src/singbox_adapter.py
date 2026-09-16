@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import os
-import sys
 import json
 import shutil
 import subprocess
@@ -98,19 +97,48 @@ def generate_singbox_config(config_input, socks_port=1080, tun_interface="tun0",
             }
         ]
     else:
-        inbounds = [
-            {
-                "type": "tun",
-                "tag": "tun-in",
-                "interface_name": tun_interface,
-                "address": ["172.19.0.1/30"],
-                "auto_route": True,
-                "strict_route": True,
-                "stack": "mixed"
-            }
-        ]
+        inbounds = [tun_inbound(tun_interface)]
 
-    singbox_config = {
+    return build_base_singbox(
+        log_level=log_level,
+        detour_tag="socks-out",
+        inbounds=inbounds,
+        outbounds=[
+            {
+                "type": "socks",
+                "tag": "socks-out",
+                "server": "127.0.0.1",
+                "server_port": socks_port
+            },
+            direct_outbound()
+        ],
+    )
+
+def tun_inbound(tun_interface="tun0") -> dict:
+    """Shared TUN inbound block (DoH DNS runs over TCP/HTTPS through it)."""
+    return {
+        "type": "tun",
+        "tag": "tun-in",
+        "interface_name": tun_interface,
+        "address": ["172.19.0.1/30"],
+        "auto_route": True,
+        "strict_route": True,
+        "stack": "mixed"
+    }
+
+
+def direct_outbound() -> dict:
+    return {"type": "direct", "tag": "direct-out"}
+
+
+def build_base_singbox(log_level: str, detour_tag: str, inbounds: list,
+                       outbounds: list) -> dict:
+    """Assemble a complete sing-box 1.12+ config from shared blocks.
+
+    Single home for the log / DoH-dns / route sections so the SSH-tunnel
+    builder below and the v2ray builder (`src/v2ray_parser.py`) can't drift.
+    """
+    return {
         "log": {
             "level": log_level,
             "timestamp": True
@@ -123,7 +151,7 @@ def generate_singbox_config(config_input, socks_port=1080, tun_interface="tun0",
                     "server": "8.8.8.8",
                     "server_port": 443,
                     "path": "/dns-query",
-                    "detour": "socks-out"
+                    "detour": detour_tag
                 },
                 {
                     "tag": "cloudflare-doh",
@@ -131,23 +159,12 @@ def generate_singbox_config(config_input, socks_port=1080, tun_interface="tun0",
                     "server": "1.1.1.1",
                     "server_port": 443,
                     "path": "/dns-query",
-                    "detour": "socks-out"
+                    "detour": detour_tag
                 }
             ]
         },
         "inbounds": inbounds,
-        "outbounds": [
-            {
-                "type": "socks",
-                "tag": "socks-out",
-                "server": "127.0.0.1",
-                "server_port": socks_port
-            },
-            {
-                "type": "direct",
-                "tag": "direct-out"
-            }
-        ],
+        "outbounds": outbounds,
         "route": {
             "default_domain_resolver": "google-doh",
             "rules": [
@@ -162,7 +179,6 @@ def generate_singbox_config(config_input, socks_port=1080, tun_interface="tun0",
             "auto_detect_interface": True
         }
     }
-    return singbox_config
 
 def save_singbox_config(singbox_dict: dict, output_path: str):
     """Write sing-box configuration dictionary to a JSON file."""

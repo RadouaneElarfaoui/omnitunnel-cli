@@ -51,7 +51,6 @@ echo -e "${C_BLUE}[*] Terminating any running OmniTunnel processes...${C_RESET}"
 pkill -f "python3.*omnitunnel.*/menu.py" 2>/dev/null || true
 pkill -f "python3.*src/ssh.py" 2>/dev/null || true
 pkill -f "ssh.*-CND 1080" 2>/dev/null || true
-pkill -f "sshpass.*host1" 2>/dev/null || true
 pkill -f "python3.*main.py.*900" 2>/dev/null || true
 pkill redsocks 2>/dev/null || true
 pkill dns2socks 2>/dev/null || true

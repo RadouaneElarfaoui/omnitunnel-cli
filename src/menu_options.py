@@ -3,17 +3,16 @@ import os
 import sys
 import json
 import shutil
-import configparser
 import getpass
 import subprocess
 from src.menu_common import (
     C_GREEN, C_YELLOW, C_RED, C_CYAN, C_RESET, C_BOLD,
     BASE_DIR, CONFIG_PATH, SAVED_CONFIGS_DIR,
     ensure_saved_configs_dir, clean_filename,
-    read_config, write_config, get_mode_name, print_current_status,
-    clear_screen, show_header, frame,
+    read_config, write_config, print_current_status,
+    frame, cached_config, cached_snapshot,
     STATUS_BREAK, STATUS_STAY, run_menu, pick_list, run_as_root,
-    input_editable, status_snapshot, stay_after, break_after,
+    input_editable, stay_after, break_after,
 )
 import functools
 
@@ -22,13 +21,11 @@ def _frame():
 from src.omni_profile import (
     export_profile_to_omni,
     import_profile_from_omni,
-    save_omni_to_ini_file,
     dict_to_configparser,
-    config_to_dict,
     InvalidPasswordError,
     InvalidProfileFormatError
 )
-from src.v2ray_parser import parse_v2ray_uri, generate_v2ray_singbox_config
+from src.v2ray_parser import generate_v2ray_singbox_config
 from src.ssh_parser import parse_share_link, ssh_config_to_uri
 
 _main_exit_flag = [False]
@@ -85,25 +82,6 @@ def _do_export(config_to_export, default_name):
     except Exception as e:
         print(f"\n{C_RED}Failed to export profile: {e}{C_RESET}")
     input("\nPress Enter to continue...")
-
-
-def _export_saved_library(mode):
-    ensure_saved_configs_dir()
-    configs = [f[:-3] for f in os.listdir(SAVED_CONFIGS_DIR) if f.endswith('.ot')]
-    if not configs:
-        print(f"\n{C_YELLOW}No saved configurations found to export.{C_RESET}")
-        input("\nPress Enter to continue...")
-        return
-    choice = pick_list("Select a Profile to Export", configs, mode=mode)
-    if choice is None:
-        return
-    try:
-        src_path = os.path.join(SAVED_CONFIGS_DIR, f"{choice}.ot")
-        cfg_dict, _ = import_profile_from_omni(src_path)
-        _do_export(dict_to_configparser(cfg_dict), choice)
-    except Exception as e:
-        print(f"\n{C_RED}Error reading profile: {e}{C_RESET}")
-        input("\nPress Enter to continue...")
 
 
 def menu_export(mode):
@@ -570,7 +548,7 @@ def menu_manage_configs(mode):
 def menu_edit_connection_mode(mode):
     def _lab(key, label):
         def _fn():
-            cur = read_config().get('mode', 'connection_mode', fallback='0')
+            cur = cached_config().get('mode', 'connection_mode', fallback='0')
             mark = f" {C_GREEN}● current{C_RESET}" if cur == key else ""
             return f"{label}{mark}"
         return _fn
@@ -597,28 +575,28 @@ def menu_edit_ssh(mode):
     refreshes after each edit without leaving the menu.
     """
     def lab_host():
-        v = status_snapshot(read_config())['ssh_host']
+        v = cached_snapshot()['ssh_host']
         return f"Host         {C_YELLOW}{v or '—'}{C_RESET}"
 
     def lab_port():
-        v = status_snapshot(read_config())['ssh_port']
+        v = cached_snapshot()['ssh_port']
         return f"Port         {C_YELLOW}{v or '—'}{C_RESET}"
 
     def lab_user():
-        v = status_snapshot(read_config())['ssh_user']
+        v = cached_snapshot()['ssh_user']
         return f"Username     {C_YELLOW}{v or '—'}{C_RESET}"
 
     def lab_pass():
-        v = read_config().get('ssh', 'password', fallback='')
+        v = cached_config().get('ssh', 'password', fallback='')
         masked = '*' * len(v) if v else '—'
         return f"Password     {C_YELLOW}{masked}{C_RESET}"
 
     def lab_auth():
-        v = status_snapshot(read_config())['ssh_auth']
+        v = cached_snapshot()['ssh_auth']
         return f"Auth Method  {C_YELLOW}{v}{C_RESET}"
 
     def lab_comp():
-        v = status_snapshot(read_config())['ssh_compress']
+        v = cached_snapshot()['ssh_compress']
         on = "enabled" if v.lower() == 'y' else "disabled"
         return f"Compression  {C_YELLOW}{on} ({v}){C_RESET}"
 
@@ -635,7 +613,7 @@ def menu_edit_ssh(mode):
 
 
 def _edit_val(section, key, label):
-    cur = read_config().get(section, key, fallback='')
+    cur = cached_config().get(section, key, fallback='')
     # prefill with current value for in-place editing; Enter keeps it
     val = _input_prefilled(f"Edit {label}: ", cur)
     # None safety, strip comparison to decide change
@@ -675,43 +653,19 @@ def _edit_proxy_inline():
 
 
 def _edit_auth():
-    cur = read_config().get('ssh', 'auth_method', fallback='password')
+    cur = cached_config().get('ssh', 'auth_method', fallback='password')
     new = 'publickey' if cur == 'password' else 'password'
     _set_config('ssh', 'auth_method', new)
 
 
 def _edit_compression():
-    cur = read_config().get('ssh', 'enable_compression', fallback='y')
+    cur = cached_config().get('ssh', 'enable_compression', fallback='y')
     new = 'n' if cur.lower() == 'y' else 'y'
     _set_config('ssh', 'enable_compression', new)
 
 
-def menu_edit_payload(mode):
-    def lab_proxy_ip():
-        v = read_config().get('Payload', 'proxyip', fallback='')
-        return f"Proxy IP     {C_YELLOW}{v or '—'}{C_RESET}"
-
-    def lab_proxy_port():
-        v = read_config().get('Payload', 'proxyport', fallback='')
-        return f"Proxy Port   {C_YELLOW}{v or '—'}{C_RESET}"
-
-    def lab_payload():
-        v = read_config().get('Payload', 'payload', fallback='')
-        preview = (v[:56] + '…') if len(v) > 57 else (v or '—')
-        # show single-line preview; full payload shown when editing
-        return f"Payload      {C_YELLOW}{preview}{C_RESET}"
-
-    options = [
-        ('1', lab_proxy_ip, stay_after(functools.partial(_edit_val, 'Payload', 'proxyip', 'Proxy IP'))),
-        ('2', lab_proxy_port, stay_after(functools.partial(_edit_val, 'Payload', 'proxyport', 'Proxy Port'))),
-        ('3', lab_payload, stay_after(_edit_payload_text)),
-        ('B', '← Back', STATUS_BREAK),
-    ]
-    run_menu("Edit Payload & Proxy  —  ↑↓ to cycle, Enter to edit", options, mode=mode)
-
-
 def _edit_payload_text():
-    cur = read_config().get('Payload', 'payload', fallback='')
+    cur = cached_config().get('Payload', 'payload', fallback='')
     # show current for reference, but prefill the input line for editing
     print(f"\nCurrent Payload:\n{C_YELLOW}{cur}{C_RESET}\n")
     val = _input_prefilled("Edit Payload: ", cur).strip()
@@ -719,36 +673,11 @@ def _edit_payload_text():
         _set_config('Payload', 'payload', val)
 
 
-def menu_edit_sni(mode):
-    def lab_sni():
-        v = read_config().get('sni', 'server_name', fallback='')
-        return f"SNI Host     {C_YELLOW}{v or '—'}{C_RESET}"
-
-    def set_sni():
-        cur = read_config().get('sni', 'server_name', fallback='')
-        val = _input_prefilled("Edit SNI Host: ", cur).strip()
-        if val and val != cur:
-            _set_config('sni', 'server_name', val)
-            print(f"\n{C_GREEN}SNI updated!{C_RESET}")
-            input("\nPress Enter to continue...")
-        return STATUS_STAY
-
-    options = [
-        ('1', lab_sni, set_sni),
-        ('B', '← Back', STATUS_BREAK),
-    ]
-    run_menu("Edit SNI  —  Enter to edit, ←/Esc to go back", options, mode=mode)
-
-
 # ---------------------------------------------------------------------------
 # Engine menu
 # ---------------------------------------------------------------------------
-def _set_engine(val, label):
-    _set_config('engine', 'engine_mode', val)
-
-
 def _toggle_engine():
-    cur = read_config().get('engine', 'engine_mode', fallback='singbox')
+    cur = cached_config().get('engine', 'engine_mode', fallback='singbox')
     new = 'redsocks' if cur == 'singbox' else 'singbox'
     _set_config('engine', 'engine_mode', new)
 
@@ -762,7 +691,7 @@ def _run_bbr():
 def _log_level_menu(mode):
     def _lab(key, label):
         def _fn():
-            cur = read_config().get('engine', 'singbox_log_level', fallback='warn')
+            cur = cached_config().get('engine', 'singbox_log_level', fallback='warn')
             mark = f" {C_GREEN}●{C_RESET}" if cur == key else ""
             return f"{label}{mark}"
         return _fn
@@ -783,12 +712,12 @@ def _set_log_level(level):
 
 def menu_edit_engine(mode):
     def lab_engine():
-        v = read_config().get('engine', 'engine_mode', fallback='singbox')
+        v = cached_config().get('engine', 'engine_mode', fallback='singbox')
         label = "Sing-Box" if v == 'singbox' else "Redsocks (Legacy)"
         return f"Engine       {C_CYAN}{label} ({v}){C_RESET}"
 
     def lab_log():
-        v = read_config().get('engine', 'singbox_log_level', fallback='warn')
+        v = cached_config().get('engine', 'singbox_log_level', fallback='warn')
         return f"Sing-Box Log {C_CYAN}{v}{C_RESET}"
 
     options = [
@@ -798,17 +727,6 @@ def menu_edit_engine(mode):
         ('B', '← Back', STATUS_BREAK),
     ]
     run_menu("Engine & Performance  —  ↑↓ to cycle, Enter to change", options, mode=mode)
-
-
-def _pick_engine(mode):
-    """Legacy 2-option picker — kept for compat, now toggled directly."""
-
-    opts = [
-        ('1', 'Sing-Box (recommended)', break_after(functools.partial(_set_engine, 'singbox', 'Sing-Box'))),
-        ('2', 'Redsocks (Legacy)', break_after(lambda: _set_engine('redsocks', 'Redsocks (Legacy Mode)'))),
-        ('B', '← Back', STATUS_BREAK),
-    ]
-    run_menu("Select Engine", opts, mode=mode)
 
 
 # ---------------------------------------------------------------------------
@@ -890,38 +808,38 @@ def menu_edit(mode):
     """
     # single source via status_snapshot — keeps Edit identical to print_current_status
     def lab_engine():
-        return f"VPN Engine        {C_CYAN}{status_snapshot(read_config())['engine_label']}{C_RESET}"
+        return f"VPN Engine        {C_CYAN}{cached_snapshot()['engine_label']}{C_RESET}"
 
     def lab_log():
-        return f"Sing-Box Log      {C_CYAN}{status_snapshot(read_config())['sb_log_level']}{C_RESET}"
+        return f"Sing-Box Log      {C_CYAN}{cached_snapshot()['sb_log_level']}{C_RESET}"
 
     def lab_mode():
-        return f"Connection Mode   {C_GREEN}{status_snapshot(read_config())['mode_name']}{C_RESET}"
+        return f"Connection Mode   {C_GREEN}{cached_snapshot()['mode_name']}{C_RESET}"
 
     def lab_ssh_server():
-        s = status_snapshot(read_config())
+        s = cached_snapshot()
         return f"SSH Server        {C_YELLOW}{s['ssh_host']}:{s['ssh_port']}{C_RESET} ({s['ssh_user']})"
 
     def lab_ssh_auth():
-        s = status_snapshot(read_config())
+        s = cached_snapshot()
         return f"SSH Auth Method   {C_YELLOW}{s['ssh_auth']}{C_RESET}"
 
     def lab_ssh_comp():
-        v = status_snapshot(read_config())['ssh_compress']
+        v = cached_snapshot()['ssh_compress']
         label = "enabled" if str(v).lower() == 'y' else "disabled"
         return f"SSH Compression   {C_YELLOW}{label} ({v}){C_RESET}"
 
     def lab_proxy():
-        s = status_snapshot(read_config())
+        s = cached_snapshot()
         return f"Proxy Server      {C_YELLOW}{s['proxy_ip']}:{s['proxy_port']}{C_RESET}"
 
     def lab_payload():
-        v = status_snapshot(read_config())['payload']
+        v = cached_snapshot()['payload']
         preview = v if len(v) <= 56 else v[:53] + '…'
         return f"Payload           {C_YELLOW}{preview}{C_RESET}"
 
     def lab_sni():
-        return f"SNI Host          {C_YELLOW}{status_snapshot(read_config())['sni_server']}{C_RESET}"
+        return f"SNI Host          {C_YELLOW}{cached_snapshot()['sni_server']}{C_RESET}"
 
     def lab_open_raw():
         return f"Open Raw Config   {C_CYAN}active.ot in editor{C_RESET}"
@@ -947,51 +865,6 @@ def menu_edit(mode):
     run_menu("Current Configuration", options, mode=mode)
 
 
-def menu_edit_grouped(mode):
-    """Legacy grouped Edit (kept for compatibility / tests).
-
-    Shows 5 categories with inline previews. Prefer the flat `menu_edit`
-    above which has no duplication and no extra drill-down.
-    """
-    def lab_mode():
-        m = read_config().get('mode', 'connection_mode', fallback='0')
-        return f"Connection Mode   {C_GREEN}{get_mode_name(m)}{C_RESET}"
-
-    def lab_ssh():
-        c = read_config()
-        h = c.get('ssh', 'host', fallback='—') or '—'
-        p = c.get('ssh', 'port', fallback='—') or '—'
-        u = c.get('ssh', 'username', fallback='—') or '—'
-        return f"SSH               {C_YELLOW}{h}:{p} ({u}){C_RESET}"
-
-    def lab_payload():
-        c = read_config()
-        ip = c.get('Payload', 'proxyip', fallback='—') or '—'
-        port = c.get('Payload', 'proxyport', fallback='—') or '—'
-        return f"Payload / Proxy   {C_YELLOW}{ip}:{port}{C_RESET}"
-
-    def lab_sni():
-        v = read_config().get('sni', 'server_name', fallback='—') or '—'
-        return f"SNI               {C_YELLOW}{v}{C_RESET}"
-
-    def lab_engine():
-        c = read_config()
-        eng = c.get('engine', 'engine_mode', fallback='singbox')
-        lvl = c.get('engine', 'singbox_log_level', fallback='warn')
-        label = "Sing-Box" if eng == 'singbox' else "Redsocks"
-        return f"Engine            {C_CYAN}{label} / log:{lvl}{C_RESET}"
-
-    options = [
-        ('1', lab_mode, stay_after(functools.partial(menu_edit_connection_mode, mode))),
-        ('2', lab_ssh, stay_after(functools.partial(menu_edit_ssh, mode))),
-        ('3', lab_payload, stay_after(functools.partial(menu_edit_payload, mode))),
-        ('4', lab_sni, stay_after(functools.partial(menu_edit_sni, mode))),
-        ('5', lab_engine, stay_after(functools.partial(menu_edit_engine, mode))),
-        ('B', '← Back', STATUS_BREAK),
-    ]
-    run_menu("Edit (grouped) —  ↑↓ to cycle categories, Enter to edit", options, mode=mode)
-
-
 # ---------------------------------------------------------------------------
 # Main menu
 # ---------------------------------------------------------------------------
@@ -1009,7 +882,7 @@ def menu_main(mode):
         ]
 
         def render():
-            print_current_status(read_config())
+            print_current_status(cached_config())
 
         run_menu(None, options, status_render=render, mode=mode)
         if _main_exit_flag[0]:

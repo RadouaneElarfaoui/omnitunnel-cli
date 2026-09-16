@@ -101,7 +101,6 @@ set -e
 ID="/opt/omnitunnel-cli"
 pkill -f "python3 ${ID}/main.py" 2>/dev/null || true
 pkill -f "python3 ${ID}/src/ssh.py" 2>/dev/null || true
-pkill -f "sshpass.*host1" 2>/dev/null || true
 pkill -f "ssh.*-CND 1080" 2>/dev/null || true
 PRERM
 chmod 755 "${CTRL_DIR}/DEBIAN/prerm"
@@ -144,7 +143,6 @@ find "${PKGDIR}/opt/omnitunnel-cli" -type f -exec chmod 644 {} +
 chmod 755 "${PKGDIR}/opt/omnitunnel-cli/runvpn.sh"
 chmod 755 "${PKGDIR}/opt/omnitunnel-cli/menu.py"
 chmod 755 "${PKGDIR}/opt/omnitunnel-cli/main.py"
-chmod 755 "${PKGDIR}/opt/omnitunnel-cli/ConfMake"
 chmod 755 "${PKGDIR}/opt/omnitunnel-cli/install.sh" "${PKGDIR}/opt/omnitunnel-cli/uninstall.sh" || true
 find "${PKGDIR}/opt/omnitunnel-cli/vpn/" -type f -exec chmod 755 {} +
 

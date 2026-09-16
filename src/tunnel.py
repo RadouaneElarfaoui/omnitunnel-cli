@@ -1,15 +1,13 @@
 import socket 
-import time
 import select
 import re
-import configparser,sys,os
+import sys,os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import ssl,certifi
+import ssl
 from src.menu_common import read_config, status_snapshot
-from .pidkill import handler
 from .inject import injector
 from src.logger import log_tunnel
-from src.ports import find_free_port, get_env_port, DEFAULT_INJECTOR_PORT
+from src.ports import get_env_port, DEFAULT_INJECTOR_PORT
 
 
 bg=''
@@ -35,7 +33,6 @@ class Tun(injector):
 		except Exception as e:
 			self.logs(e)
 			raise
-		return read_config()
 
 	def extraxt_sni(self,config):
 		return status_snapshot(config)['sni_server']
@@ -242,6 +239,3 @@ class Tun(injector):
 				   
 	def logs(self,log):
 		log_tunnel(str(log))
-if __name__=='__main__':
-	start = Tun()
-	start.create_connection()

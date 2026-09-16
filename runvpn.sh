@@ -89,8 +89,6 @@ pkill -f "python3.*src/ssh.py" 2>/dev/null || true
 # kill ssh via injector (mode 1/2/3) and direct ssh (mode 0)
 pkill -f "ssh.*-CND 1080" 2>/dev/null || true
 pkill -f "sshpass.*ssh" 2>/dev/null || true
-# legacy pattern fallback
-pkill -f "sshpass.*host1" 2>/dev/null || true
 pkill redsocks 2>/dev/null || true
 pkill dns2socks 2>/dev/null || true
 pkill sing-box 2>/dev/null || true

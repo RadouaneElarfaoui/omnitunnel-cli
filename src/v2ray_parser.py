@@ -11,7 +11,6 @@ import json
 import base64
 import binascii
 import urllib.parse
-import configparser
 
 def safe_b64decode(s: str) -> str:
     """Decode base64 string with automatic padding handling."""
@@ -307,83 +306,46 @@ def parse_v2ray_uri(uri: str) -> tuple:
     else:
         raise ValueError(f"Unsupported URI protocol scheme: {uri[:10]}")
 
-def generate_v2ray_singbox_config(outbound_dict: dict, tun_interface="tun0") -> dict:
+def generate_v2ray_singbox_config(outbound_dict: dict, tun_interface="tun0", log_level=None) -> dict:
     """
     Wrap parsed outbound dictionary into a complete, warning-free sing-box 1.12+ JSON config.
+    Shares log / DoH-dns / route blocks with src/singbox_adapter.py.
     """
     # Ensure outbound has a tag
     if "tag" not in outbound_dict:
         outbound_dict["tag"] = "proxy-out"
 
-    log_level = "warn"
-    try:
-        import sys
-        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        from src.menu_common import read_config, status_snapshot
-        candidate = status_snapshot(read_config())['sb_log_level'].strip().lower()
-        if candidate in ("info", "debug", "warn", "error"):
-            log_level = candidate
-    except Exception:
-        pass
+    if log_level is None:
+        log_level = "warn"
+        try:
+            from src.menu_common import read_config, status_snapshot
+            candidate = status_snapshot(read_config())['sb_log_level'].strip().lower()
+            if candidate in ("info", "debug", "warn", "error"):
+                log_level = candidate
+        except Exception:
+            try:
+                import sys as _sys
+                _sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                from src.menu_common import read_config as _rc, status_snapshot as _ss
+                candidate = _ss(_rc())['sb_log_level'].strip().lower()
+                if candidate in ("info", "debug", "warn", "error"):
+                    log_level = candidate
+            except Exception:
+                pass
 
-    singbox_config = {
-        "log": {
-            "level": log_level,
-            "timestamp": True
-        },
-        "dns": {
-            "servers": [
-                {
-                    "tag": "google-doh",
-                    "type": "https",
-                    "server": "8.8.8.8",
-                    "server_port": 443,
-                    "path": "/dns-query",
-                    "detour": outbound_dict["tag"]
-                },
-                {
-                    "tag": "cloudflare-doh",
-                    "type": "https",
-                    "server": "1.1.1.1",
-                    "server_port": 443,
-                    "path": "/dns-query",
-                    "detour": outbound_dict["tag"]
-                }
-            ]
-        },
-        "inbounds": [
-            {
-                "type": "tun",
-                "tag": "tun-in",
-                "interface_name": tun_interface,
-                "address": ["172.19.0.1/30"],
-                "auto_route": True,
-                "strict_route": True,
-                "stack": "mixed"
-            }
-        ],
-        "outbounds": [
-            outbound_dict,
-            {
-                "type": "direct",
-                "tag": "direct-out"
-            }
-        ],
-        "route": {
-            "default_domain_resolver": "google-doh",
-            "rules": [
-                {
-                    "action": "sniff"
-                },
-                {
-                    "action": "hijack-dns",
-                    "protocol": "dns"
-                }
-            ],
-            "auto_detect_interface": True
-        }
-    }
-    return singbox_config
+    try:
+        from src.singbox_adapter import build_base_singbox, tun_inbound, direct_outbound
+    except ImportError:
+        import sys as _sys2
+        _sys2.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        from src.singbox_adapter import build_base_singbox, tun_inbound, direct_outbound
+
+    return build_base_singbox(
+        log_level=log_level,
+        detour_tag=outbound_dict["tag"],
+        inbounds=[tun_inbound(tun_interface)],
+        outbounds=[outbound_dict, direct_outbound()],
+    )
 
 if __name__ == '__main__':
     if len(sys.argv) > 1:

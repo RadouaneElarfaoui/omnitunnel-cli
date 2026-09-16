@@ -2,8 +2,6 @@ import sys,os,re
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import subprocess
 import socket
-import time
-import configparser
 import random
 import shutil
 import threading
@@ -63,14 +61,6 @@ class sshRunn:
         if free != start:
             self.logs(f"{O}SOCKS port {start} in use — using {free}{GR}")
         return free
-
-    def LogServeMsg(self,lines):
-        try:
-            slicemsg = lines[lines.index("debug1: SSH2_MSG_SERVICE_ACCEPT received\r\n") : lines.index('debug1: Next authentication method: publickey\r\n')]
-            msg = "".join(x for x in slicemsg)
-            self.logs(msg)
-        except Exception:
-            pass
 
     def _resolve_key_file(self, password_field):
         """Resolve private key path for publickey auth.
@@ -350,11 +340,9 @@ class sshRunn:
 
     def create_connection(self,host,port,user,password,mode,auth_method ):
         try:
-            # Determine remote display
-            if mode in ('0', '2') or not (self.proxy[0] and str(self.proxy[0]).strip()):
-                remote_addr = (host, port)
-            else:
-                remote_addr = self.proxy
+            # Single-place connection logging lives in _ssh_attempt (Mode /
+            # Auth / Executing). Here: validation + DNS pre-check only, plus
+            # the SNI / payload lines that _ssh_attempt doesn't cover.
             if mode in ("1" ,"3"):
                 payload = self.payload.replace("[host]",host)
             else:
@@ -362,10 +350,7 @@ class sshRunn:
             if self.sni:
                 self.logs(f"SNI : {O}{self.sni}{GR}")
             if payload:
-                self.logs(f"Target : {O}{remote_addr}{GR} via {O}{MODE_LABELS.get(str(mode),mode)}{GR}")
                 self.logs(f"Sending Payload :{O}{payload[:120]}{GR}")
-            else:
-                self.logs(f"Target : {O}{remote_addr}{GR} via {O}{MODE_LABELS.get(str(mode),mode)}{GR}")
 
             # Validate before network ops
             errors = self._validate_config(host, port, user, password, mode, auth_method)
