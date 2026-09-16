@@ -98,9 +98,35 @@ pkill -f "python3.*main.py" 2>/dev/null || true
 echo -e "[+] DONE ${SCOLOR}"
 }
 
+# Scoped cleanup for proxy mode: only this instance's ports, so parallel
+# proxies (multiple `runvpn.sh --proxy`) don't kill each other.
+killprocess_proxy() {
+echo -e "${RED}[+] KILLING PROXY INSTANCE (ssh -D ${OMNI_SSH_SOCKS_PORT:-1080}, socks ${OMNI_SOCKS_IN_PORT:-1081}, http ${OMNI_HTTP_IN_PORT:-8080}, injector ${OMNI_INJECTOR_PORT:-9008})...."
+if [ -n "${INJECTOR_PID:-}" ]; then
+    kill "$INJECTOR_PID" 2>/dev/null || true
+fi
+if [ -n "${OMNI_SSH_SOCKS_PORT:-}" ]; then
+    pkill -f "ssh.*-CND ${OMNI_SSH_SOCKS_PORT}" 2>/dev/null || true
+fi
+if [ -n "${OMNI_INJECTOR_PORT:-}" ]; then
+    pkill -f "main.py ${OMNI_INJECTOR_PORT}" 2>/dev/null || true
+fi
+if [ -n "${OMNI_SOCKS_IN_PORT:-}" ]; then
+    pkill -f "sing-box.*singbox_config_${OMNI_SOCKS_IN_PORT}.json" 2>/dev/null || true
+fi
+pkill -P $$ 2>/dev/null || true
+echo -e "[+] DONE ${SCOLOR}"
+}
+
 # Intercept Ctrl+C (SIGINT) and SIGTERM to stop everything immediately
-trap 'killprocess; exit 1' INT TERM
-trap 'killprocess' EXIT
+# Proxy mode uses scoped cleanup (parallel instances safe); TUN keeps global.
+if [ "$OUTPUT_MODE" = "socks" ]; then
+    trap 'killprocess_proxy; exit 1' INT TERM
+    trap 'killprocess_proxy' EXIT
+else
+    trap 'killprocess; exit 1' INT TERM
+    trap 'killprocess' EXIT
+fi
 
 function serverlistening() {
     localport="$1"
@@ -108,7 +134,8 @@ function serverlistening() {
     if [ "$mode" = "v2ray" ] || [ "$mode" = "0" ]; then
         return 0
     fi
-    python3 "$PROJECT_DIR/main.py" $localport &
+    OMNI_INJECTOR_PORT="$localport" python3 "$PROJECT_DIR/main.py" $localport &
+    INJECTOR_PID=$!
     echo ""
 }
 function connect() {
@@ -129,7 +156,37 @@ if [ "$mode" = "v2ray" ]; then
     exit 0
 fi
 
-# Clean any stale tunnel from previous run before binding
+if [ "$OUTPUT_MODE" = "socks" ]; then
+    # Proxy mode: allocate 4 distinct free ports once per instance (+1 until free).
+    # Parallel `runvpn.sh --proxy` runs each get their own set — no collisions.
+    eval "$(python3 -c "
+import sys; sys.path.insert(0, '$PROJECT_DIR')
+from src.ports import allocate_proxy_ports
+p = allocate_proxy_ports()
+print('export OMNI_SSH_SOCKS_PORT=%s OMNI_SOCKS_IN_PORT=%s OMNI_HTTP_IN_PORT=%s OMNI_INJECTOR_PORT=%s' % (p['ssh_socks'], p['socks_in'], p['http_in'], p['injector']))
+" 2>/dev/null)" || {
+        export OMNI_SSH_SOCKS_PORT="${OMNI_SSH_SOCKS_PORT:-1080}"
+        export OMNI_SOCKS_IN_PORT="${OMNI_SOCKS_IN_PORT:-1081}"
+        export OMNI_HTTP_IN_PORT="${OMNI_HTTP_IN_PORT:-8080}"
+        export OMNI_INJECTOR_PORT="${OMNI_INJECTOR_PORT:-9008}"
+    }
+    export OMNI_SSH_SOCKS_PORT OMNI_SOCKS_IN_PORT OMNI_HTTP_IN_PORT OMNI_INJECTOR_PORT
+    echo -e "${GREEN}[+] Proxy instance ports: SSH -D ${OMNI_SSH_SOCKS_PORT}, SOCKS ${OMNI_SOCKS_IN_PORT}, HTTP ${OMNI_HTTP_IN_PORT}, injector ${OMNI_INJECTOR_PORT}${SCOLOR}"
+    # No global kill here — that would take down other proxy instances.
+    for i in {1..9999}
+    do
+        echo -e "$GREEN ++++ LOGS ++++$SCOLOR"
+        rm -f "$PROJECT_DIR/logs.txt" 2>/dev/null || true
+        serverlistening "$OMNI_INJECTOR_PORT"
+        sleep 1
+        connect "$OMNI_INJECTOR_PORT"
+        killprocess_proxy
+        sleep 1
+    done
+    exit 0
+fi
+
+# Clean any stale tunnel from previous run before binding (TUN single-instance)
 killprocess 2>/dev/null || true
 sleep 1
 

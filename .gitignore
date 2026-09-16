@@ -15,6 +15,7 @@ cfgs/settings.ini
 cfgs/settings.ot
 cfgs/publickey.pem
 cfgs/singbox_config.json
+cfgs/singbox_config_*.json
 
 # Ignore all profiles in cfgs/saved/ (keep folder via .gitkeep)
 cfgs/saved/*

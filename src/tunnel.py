@@ -9,6 +9,7 @@ from src.menu_common import read_config, status_snapshot
 from .pidkill import handler
 from .inject import injector
 from src.logger import log_tunnel
+from src.ports import find_free_port, get_env_port, DEFAULT_INJECTOR_PORT
 
 
 bg=''
@@ -23,8 +24,10 @@ class Tun(injector):
 		try:
 			self.LISTEN_PORT = int(sys.argv[1])
 		except (IndexError, ValueError):
-			self.LISTEN_PORT = 0
-			self.logs(f"{R}Invalid listen port arg '{sys.argv[1] if len(sys.argv)>1 else ''}' — using 0{GR}")
+			env_port = get_env_port("OMNI_INJECTOR_PORT", DEFAULT_INJECTOR_PORT)
+			self.LISTEN_PORT = env_port
+			self.logs(f"{R}Invalid listen port arg '{sys.argv[1] if len(sys.argv)>1 else ''}' — using {env_port}{GR}")
+		self.ACTUAL_PORT = self.LISTEN_PORT
 
 	def conf(self):
 		try:
@@ -184,32 +187,47 @@ class Tun(injector):
 			
 	def create_connection(self):
 		# Bind to 127.0.0.1 explicitly — localhost may resolve to ::1 on some hosts
+		# Proxy mode runs multiple instances: +1 until a free port binds.
 		bind_host = "127.0.0.1"
 		sockt = None
-		for res in socket.getaddrinfo(bind_host, self.LISTEN_PORT, socket.AF_UNSPEC,socket.SOCK_STREAM, 0, socket.AI_PASSIVE):
-			af, socktype, proto, canonname, sa = res
-			try:
-				sockt = socket.socket(af, socktype, proto)
-				sockt.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-			except OSError as msg:
-				sockt = None
-				continue
-			try:
-				sockt.bind((bind_host,self.LISTEN_PORT))
-				sockt.listen(128)
-				self.logs(f"Injector listening on {bind_host}:{self.LISTEN_PORT}")
-			except OSError as msg:
+		port = self.LISTEN_PORT or get_env_port("OMNI_INJECTOR_PORT", DEFAULT_INJECTOR_PORT)
+		start_port = port
+		while True:
+			for res in socket.getaddrinfo(bind_host, port, socket.AF_UNSPEC,socket.SOCK_STREAM, 0, socket.AI_PASSIVE):
+				af, socktype, proto, canonname, sa = res
 				try:
-					sockt.close()
-				except Exception:
-					pass
-				sockt = None
-				continue
-			break
-		if sockt is None:
-			self.logs(f'{R}Coudn\'t open socket on port {self.LISTEN_PORT}: address in use{GR}')
-			print('Coudn\'t open socket ')
-			sys.exit(1)
+					sockt = socket.socket(af, socktype, proto)
+					sockt.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+				except OSError as msg:
+					sockt = None
+					continue
+				try:
+					sockt.bind((bind_host,port))
+					sockt.listen(128)
+					if port != start_port:
+						self.logs(f"Port {start_port} in use — auto-moved to {bind_host}:{port}")
+					self.logs(f"Injector listening on {bind_host}:{port}")
+				except OSError as msg:
+					try:
+						sockt.close()
+					except Exception:
+						pass
+					sockt = None
+					continue
+				break
+			if sockt is not None:
+				break
+			# Port in use (or bind failed) — try next port instead of exiting,
+			# so parallel proxy instances each get their own injector.
+			port += 1
+			if port > 65535:
+				self.logs(f'{R}Coudn\'t open socket from port {start_port}: no free port{GR}')
+				print('Coudn\'t open socket ')
+				sys.exit(1)
+			continue
+		self.LISTEN_PORT = port
+		self.ACTUAL_PORT = port
+		print(f"OMNI_INJECTOR_PORT={port}", flush=True)
 		
 		while True:
 			try:

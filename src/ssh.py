@@ -10,6 +10,10 @@ import threading
 from src.logger import log_ssh, log_singbox, log_tunnel, log_error
 from src.paths import PROJECT_DIR
 from src.menu_common import read_config, status_snapshot
+from src.ports import (
+    find_free_port, get_env_port,
+    DEFAULT_SSH_SOCKS_PORT, DEFAULT_SOCKS_IN_PORT, DEFAULT_HTTP_IN_PORT,
+)
 
 
 # colors
@@ -37,6 +41,28 @@ class sshRunn:
         self.ever_connected = False
         self._engine_launched = False
         self.path = PROJECT_DIR
+        # Proxy mode multi-instance: -D port auto-increments (+1 until free).
+        # Precedence: OMNI_SSH_SOCKS_PORT env (orchestrator) > ssh.socks_port config > 1080.
+        self.socks5_port = self._resolve_socks_port()
+
+    def _resolve_socks_port(self):
+        """Resolve SSH dynamic-forward port, +1 until free for multi-instance."""
+        start = get_env_port("OMNI_SSH_SOCKS_PORT", 0)
+        if not start:
+            try:
+                cfg = read_config()
+                start = int(cfg.get('ssh', 'socks_port', fallback=str(DEFAULT_SSH_SOCKS_PORT)))
+            except Exception:
+                start = DEFAULT_SSH_SOCKS_PORT
+        if not (1 <= start <= 65535):
+            start = DEFAULT_SSH_SOCKS_PORT
+        try:
+            free = find_free_port(start)
+        except OSError:
+            free = start
+        if free != start:
+            self.logs(f"{O}SOCKS port {start} in use — using {free}{GR}")
+        return free
 
     def LogServeMsg(self,lines):
         try:
@@ -121,8 +147,24 @@ class sshRunn:
         return errors
 
     def ssh_client(self,host,port,user,password,mode,auth_method):
+            max_forward_retries = 5
+            for forward_attempt in range(max_forward_retries + 1):
+                if self._ssh_attempt(host,port,user,password,mode,auth_method):
+                    return
+                # _ssh_attempt returns False only on local-forward conflict;
+                # bump +1 until free and retry so parallel proxies survive.
+                old = self.socks5_port
+                try:
+                    self.socks5_port = find_free_port(old + 1)
+                except OSError:
+                    return
+                self.logs(f"{O}Retrying SSH with SOCKS port {self.socks5_port} (was {old}){GR}")
+
+    def _ssh_attempt(self,host,port,user,password,mode,auth_method):
+            """Single ssh attempt. Returns True if done, False to retry next port."""
+            forward_conflict = False
             try:
-                socks5_port = 1080
+                socks5_port = self.socks5_port
                 dynamic_port_forwarding = '-CND {}'.format(socks5_port)
                 inject_host= self.inject_host
                 inject_port= self.inject_port
@@ -153,7 +195,7 @@ class sshRunn:
                     if not key_file:
                         self.logs(R + "Publickey auth selected but no private key file found — aborting" + GR)
                         self.logs(R + "Hint: place key at cfgs/privatekey.pem or set password field to key path, or switch auth to password" + GR)
-                        return
+                        return True
                     self.logs(f"Auth: {O}publickey{GR} user={O}{user}{GR} key={O}{key_file}{GR} host={O}{host}:{port}{GR}")
                     sshcmd = f"ssh -i {key_file} -o IdentitiesOnly=yes {proxycmd} {compress} {base_opts} {user}@{host}"
                     ssh_env = os.environ.copy()
@@ -214,7 +256,9 @@ class sshRunn:
                         self.logs(R+f'Timeout: {stripped}'+GR)
                     elif 'Connection closed' in line:self.logs(R+'Connection closed '+GR)
                     elif 'Connection refused' in line:self.logs(R+'Connection refused — check host/port and SNI/proxy'+GR)
-                    elif 'Could not request local forwarding' in line:self.logs(R+'Port 1080 already in use — another tunnel running?'+GR)
+                    elif 'Could not request local forwarding' in line:
+                        self.logs(R+f'Port {socks5_port} already in use — trying next free port'+GR)
+                        forward_conflict = True
                     elif 'Entering interactive session.' in line:
                         self.logs(f'{G}Connected — entering interactive session{GR}')
                         self.connected=True
@@ -235,6 +279,12 @@ class sshRunn:
                         self._engine_launched = True
 
                 response.wait()
+                if forward_conflict and not self.ever_connected:
+                    try:
+                        response.terminate()
+                    except Exception:
+                        pass
+                    return False
                 if self.ever_connected:
                     if response.returncode == 0:
                         self.logs(G + "SSH session ended cleanly" + GR)
@@ -248,12 +298,14 @@ class sshRunn:
                             self.logs(R + "TLS mode selected but SNI is placeholder — set real SNI host" + GR)
                         if str(auth_method) == "publickey" and response.returncode == 255:
                             self.logs(R + "Publickey failure: verify key permissions (chmod 600) and username" + GR)
+                return True
 
             except KeyboardInterrupt:
-                return None
+                return True
             except Exception as error:
                 log_error(f"SSH client error: {error}")
                 print(error)
+                return True
 
     def _launch_engine(self):
         engine = getattr(self, 'engine_mode', 'singbox')
@@ -263,7 +315,18 @@ class sshRunn:
         else:
             script = os.path.join(PROJECT_DIR, "vpn/proxification")
             logger = log_tunnel
-        self.logs(f"Launching {engine} engine...")
+        self.logs(f"Launching {engine} engine (SOCKS -D {self.socks5_port})...")
+        # Propagate per-instance ports so sing-box socks-out matches this ssh -D.
+        # sudo -E preserves these for the launcher script.
+        env = os.environ.copy()
+        env["OMNI_SSH_SOCKS_PORT"] = str(self.socks5_port)
+        for key, default in (("OMNI_SOCKS_IN_PORT", str(DEFAULT_SOCKS_IN_PORT)),
+                             ("OMNI_HTTP_IN_PORT", str(DEFAULT_HTTP_IN_PORT))):
+            if not env.get(key):
+                try:
+                    env[key] = str(find_free_port(int(default)))
+                except Exception:
+                    env[key] = default
         # Engine needs root (iptables/TUN), so elevate via sudo; run in background
         # and stream its output through the logger instead of discarding it.
         proc = subprocess.Popen(
@@ -271,6 +334,7 @@ class sshRunn:
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
+            env=env,
         )
         def _stream():
             try:

@@ -23,10 +23,15 @@ def find_singbox_binary():
             return path
     return None
 
-def generate_singbox_config(config_input, socks_port=1080, tun_interface="tun0", output_mode="tun") -> dict:
+def generate_singbox_config(config_input, socks_port=1080, tun_interface="tun0", output_mode="tun",
+                           socks_in_port=1081, http_in_port=8080) -> dict:
     """
     Generate sing-box 1.12+ compatible JSON configuration dictionary using DoH (DNS-over-HTTPS).
     DoH runs over TCP/HTTPS, ensuring 100% compatibility with OpenSSH SOCKS5 proxies.
+
+    Proxy mode multi-instance: inbounds (socks_in_port/http_in_port) and the
+    socks-out upstream (socks_port) can be overridden via args or
+    OMNI_SSH_SOCKS_PORT / OMNI_SOCKS_IN_PORT / OMNI_HTTP_IN_PORT env.
     """
     if isinstance(config_input, configparser.ConfigParser):
         config_dict = {s: dict(config_input[s]) for s in config_input.sections()}
@@ -41,6 +46,33 @@ def generate_singbox_config(config_input, socks_port=1080, tun_interface="tun0",
             socks_port = int(config_dict["ssh"]["socks_port"])
         except ValueError:
             pass
+    # Env overrides (orchestrator allocates per-instance free ports)
+    try:
+        from src.ports import get_env_port, find_free_port, is_port_free as _free
+        if os.environ.get("OMNI_SSH_SOCKS_PORT"):
+            socks_port = get_env_port("OMNI_SSH_SOCKS_PORT", socks_port)
+        if os.environ.get("OMNI_SOCKS_IN_PORT"):
+            socks_in_port = get_env_port("OMNI_SOCKS_IN_PORT", socks_in_port)
+        if os.environ.get("OMNI_HTTP_IN_PORT"):
+            http_in_port = get_env_port("OMNI_HTTP_IN_PORT", http_in_port)
+        # +1 until free for inbounds so parallel proxies don't collide.
+        # Keep them distinct from each other and from the ssh -D port.
+        if output_mode == "socks":
+            socks_port = int(socks_port)
+            socks_in_port = int(socks_in_port)
+            http_in_port = int(http_in_port)
+            used = {socks_port}
+            if socks_in_port in used or not _free(socks_in_port):
+                start = socks_in_port + 1 if socks_in_port in used else socks_in_port
+                socks_in_port = find_free_port(start)
+            used.add(socks_in_port)
+            if http_in_port in used or not _free(http_in_port):
+                start = http_in_port
+                while start in used:
+                    start += 1
+                http_in_port = find_free_port(start)
+    except Exception:
+        pass
 
     # Log level: 'info' to debug, 'warn' (default) to reduce noise
     log_level = "warn"
@@ -56,13 +88,13 @@ def generate_singbox_config(config_input, socks_port=1080, tun_interface="tun0",
                 "type": "socks",
                 "tag": "socks-in",
                 "listen": "0.0.0.0",
-                "listen_port": 1081
+                "listen_port": int(socks_in_port)
             },
             {
                 "type": "http",
                 "tag": "http-in",
                 "listen": "0.0.0.0",
-                "listen_port": 8080
+                "listen_port": int(http_in_port)
             }
         ]
     else:

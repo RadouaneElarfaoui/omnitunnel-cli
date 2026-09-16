@@ -11,20 +11,50 @@ if [ -z "$SINGBOX_BIN" ]; then
     exit 1
 fi
 
-CONFIG_FILE="$PROJECT_DIR/cfgs/singbox_config.json"
+# Per-instance ports: orchestrator (runvpn.sh) or ssh.py exports OMNI_* env.
+# Fall back to allocating free ports here so direct launches also survive.
+if [ -z "$OMNI_SSH_SOCKS_PORT" ] || [ -z "$OMNI_SOCKS_IN_PORT" ] || [ -z "$OMNI_HTTP_IN_PORT" ]; then
+    eval "$(python3 -c "
+import sys; sys.path.insert(0, '$PROJECT_DIR')
+from src.ports import allocate_proxy_ports
+import os
+p = allocate_proxy_ports(
+    ssh_socks=os.environ.get('OMNI_SSH_SOCKS_PORT'),
+    socks_in=os.environ.get('OMNI_SOCKS_IN_PORT'),
+    http_in=os.environ.get('OMNI_HTTP_IN_PORT'),
+)
+print('OMNI_SSH_SOCKS_PORT=%s OMNI_SOCKS_IN_PORT=%s OMNI_HTTP_IN_PORT=%s' % (p['ssh_socks'], p['socks_in'], p['http_in']))
+" 2>/dev/null)"
+fi
+export OMNI_SSH_SOCKS_PORT="${OMNI_SSH_SOCKS_PORT:-1080}"
+export OMNI_SOCKS_IN_PORT="${OMNI_SOCKS_IN_PORT:-1081}"
+export OMNI_HTTP_IN_PORT="${OMNI_HTTP_IN_PORT:-8080}"
+
+# Per-instance config file in proxy mode so parallel proxies don't
+# overwrite each other. TUN mode keeps the legacy stable path.
+if [ "${OUTPUT_MODE:-tun}" = "socks" ]; then
+    CONFIG_FILE="$PROJECT_DIR/cfgs/singbox_config_${OMNI_SOCKS_IN_PORT}.json"
+else
+    CONFIG_FILE="$PROJECT_DIR/cfgs/singbox_config.json"
+fi
 
 # Generate fresh sing-box JSON configuration from unified active.ot
 OUTPUT_MODE="${OUTPUT_MODE:-tun}"
-python3 -c "
+OMNI_SSH_SOCKS_PORT="$OMNI_SSH_SOCKS_PORT" OMNI_SOCKS_IN_PORT="$OMNI_SOCKS_IN_PORT" OMNI_HTTP_IN_PORT="$OMNI_HTTP_IN_PORT" python3 -c "
 import sys, os
 sys.path.insert(0, '$PROJECT_DIR')
 from src.menu_common import read_config, status_snapshot
 from src.singbox_adapter import generate_singbox_config, save_singbox_config
+from src.ports import get_env_port
 
 config = read_config()
 s = status_snapshot(config)
 mode = s['mode']
 output_mode = '$OUTPUT_MODE'
+config_file = '$CONFIG_FILE'
+ssh_socks = get_env_port('OMNI_SSH_SOCKS_PORT', 1080)
+socks_in = get_env_port('OMNI_SOCKS_IN_PORT', 1081)
+http_in = get_env_port('OMNI_HTTP_IN_PORT', 8080)
 
 # v2ray mode: if json profile exists, copy it directly; else generate from config
 if mode == 'v2ray':
@@ -40,25 +70,29 @@ if mode == 'v2ray':
         try:
             with open(v2ray_cfg_path, 'r', encoding='utf-8') as f:
                 json.load(f)
-            shutil.copyfile(v2ray_cfg_path, '$CONFIG_FILE')
+            shutil.copyfile(v2ray_cfg_path, config_file)
         except Exception as e:
             print(f'Warning: v2ray config invalid ({e}) — generating default', flush=True)
-            sb_cfg = generate_singbox_config(config, socks_port=1080, output_mode=output_mode)
-            save_singbox_config(sb_cfg, '$CONFIG_FILE')
+            sb_cfg = generate_singbox_config(config, socks_port=ssh_socks, output_mode=output_mode,
+                                             socks_in_port=socks_in, http_in_port=http_in)
+            save_singbox_config(sb_cfg, config_file)
     else:
         if v2ray_cfg_path:
             print(f'Warning: v2ray config not found at {v2ray_cfg_path} — generating default SOCKS config', flush=True)
-        sb_cfg = generate_singbox_config(config, socks_port=1080, output_mode=output_mode)
-        save_singbox_config(sb_cfg, '$CONFIG_FILE')
+        sb_cfg = generate_singbox_config(config, socks_port=ssh_socks, output_mode=output_mode,
+                                         socks_in_port=socks_in, http_in_port=http_in)
+        save_singbox_config(sb_cfg, config_file)
 else:
-    sb_cfg = generate_singbox_config(config, socks_port=1080, output_mode=output_mode)
-    save_singbox_config(sb_cfg, '$CONFIG_FILE')
+    sb_cfg = generate_singbox_config(config, socks_port=ssh_socks, output_mode=output_mode,
+                                     socks_in_port=socks_in, http_in_port=http_in)
+    save_singbox_config(sb_cfg, config_file)
 "
 
 if [ "$OUTPUT_MODE" = "socks" ]; then
     echo "✔ Starting sing-box Proxy Engine..."
-    echo "  SOCKS5 → 0.0.0.0:1081"
-    echo "  HTTP   → 0.0.0.0:8080"
+    echo "  SOCKS5 → 0.0.0.0:$OMNI_SOCKS_IN_PORT (upstream 127.0.0.1:$OMNI_SSH_SOCKS_PORT)"
+    echo "  HTTP   → 0.0.0.0:$OMNI_HTTP_IN_PORT"
+    echo "  config → $CONFIG_FILE"
 else
     echo "✔ Starting sing-box High-Performance TUN Engine..."
 fi

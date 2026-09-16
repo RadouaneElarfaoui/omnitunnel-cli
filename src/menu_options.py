@@ -804,7 +804,7 @@ def menu_start_vpn(mode):
 
 def menu_start_proxy(mode):
     _frame()
-    print(f"{C_GREEN}Starting Proxy (SOCKS:1081 + HTTP:8080)... (Press Ctrl+C to stop){C_RESET}\n")
+    print(f"{C_GREEN}Starting Proxy (auto ports, +1 if busy)... (Press Ctrl+C to stop){C_RESET}\n")
     try:
         subprocess.run(["bash", os.path.join(BASE_DIR, "runvpn.sh"), "--proxy"])
     except KeyboardInterrupt:
