@@ -402,12 +402,17 @@ def generate_v2ray_singbox_config(outbound_dict: dict, tun_interface="tun0", log
 
     # DNS escape hatch: when the outbound server is a domain, resolving it
     # via DoH deadlocks (DoH detours through the very outbound being dialed).
-    # Resolve just that hostname with the system resolver; everything else
-    # keeps going through DoH inside the tunnel.
+    # Resolve just that hostname with the system resolver via an explicit
+    # route rule; everything else keeps going through DoH inside the tunnel.
+    # (A bare dns.rules entry is ignored on 1.14 — domain_resolver it is.)
     server = outbound_dict.get("server", "")
     if server and not _is_ip_literal(server):
         cfg["dns"]["servers"].append({"tag": "local-dns", "type": "local"})
-        cfg["dns"]["rules"] = [{"domain": [server], "server": "local-dns"}]
+        cfg["route"]["rules"].insert(0, {
+            "domain": [server],
+            "action": "route",
+            "domain_resolver": "local-dns",
+        })
     return cfg
 
 if __name__ == '__main__':
