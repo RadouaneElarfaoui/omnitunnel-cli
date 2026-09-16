@@ -11,12 +11,7 @@
 #   bash install-singbox-lx.sh
 set -euo pipefail
 
-# Fail fast: /opt needs root (Termux sets PREFIX and is exempt).
-if [ -z "${PREFIX:-}" ] && [ "$(id -u)" -ne 0 ]; then
-    echo -e "\033[1;31m[✕] Run as root — this installs to /opt and /usr/local/bin.\033[0m"
-    echo "    curl -fsSL https://raw.githubusercontent.com/RadouaneElarfaoui/omnitunnel-cli/main/install-singbox-lx.sh | sudo bash"
-    exit 1
-fi
+SUDO=""; [ "$(id -u)" -ne 0 ] && command -v sudo >/dev/null 2>&1 && SUDO="sudo"
 
 LX_VERSION="${LX_VERSION:-v1.14.1-lx.3}"
 REPO="${LX_REPO:-Leadaxe/sing-box-lx}"
@@ -71,7 +66,7 @@ echo -e "${BLUE}[*] Verifying checksum...${NC}"
 echo "$(grep "  $TARBALL\$" "$TMP_DIR/SHA256SUMS" | cut -d' ' -f1)  $DL_FILE" | sha256sum -c -
 
 echo -e "${BLUE}[*] Installing to $INSTALL_DIR...${NC}"
-mkdir -p "$INSTALL_DIR" "$BIN_DIR"
+$SUDO mkdir -p "$INSTALL_DIR" "$BIN_DIR"
 tar -xzf "$DL_FILE" -C "$TMP_DIR"
 # Release tarballs contain a single top-level sing-box binary (plus docs).
 BIN_SRC="$(find "$TMP_DIR" -maxdepth 2 -type f -name 'sing-box' | head -n 1)"
@@ -79,9 +74,9 @@ if [ -z "$BIN_SRC" ]; then
     echo -e "${RED}[✕] sing-box binary not found inside $TARBALL.${NC}"
     exit 1
 fi
-cp "$BIN_SRC" "$INSTALL_DIR/sing-box"
-chmod 755 "$INSTALL_DIR/sing-box"
-ln -sf "$INSTALL_DIR/sing-box" "$BIN_LINK"
+$SUDO cp "$BIN_SRC" "$INSTALL_DIR/sing-box"
+$SUDO chmod 755 "$INSTALL_DIR/sing-box"
+$SUDO ln -sf "$INSTALL_DIR/sing-box" "$BIN_LINK"
 
 echo -e "${BLUE}[*] Verifying installation...${NC}"
 INSTALLED="$("$BIN_LINK" version 2>/dev/null | head -n 1)"
