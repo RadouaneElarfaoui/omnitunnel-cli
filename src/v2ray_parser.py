@@ -76,6 +76,9 @@ def parse_vless(uri: str) -> tuple:
                 "public_key": pbk,
                 "short_id": sid
             }
+        insecure = params.get("allowInsecure", params.get("insecure", [""]))[0]
+        if insecure.strip().lower() in ("1", "true", "yes"):
+            tls_config["insecure"] = True
         outbound["tls"] = tls_config
         alpn = params.get("alpn", [""])[0]
         if alpn:

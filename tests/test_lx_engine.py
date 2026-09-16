@@ -56,6 +56,20 @@ class TestXhttpParsing(unittest.TestCase):
         )
         self.assertEqual(outbound["tls"]["alpn"], ["http/1.1"])
 
+    def test_allowinsecure_maps_to_tls_insecure(self):
+        outbound, _ = parse_vless(
+            "vless://aaaa1111-2222-4333-8444-555555555555@1.2.3.4:443"
+            "?security=tls&type=ws&allowInsecure=1#t"
+        )
+        self.assertTrue(outbound["tls"]["insecure"])
+
+    def test_no_allowinsecure_means_no_insecure_key(self):
+        outbound, _ = parse_vless(
+            "vless://aaaa1111-2222-4333-8444-555555555555@1.2.3.4:443"
+            "?security=tls&type=ws#t"
+        )
+        self.assertNotIn("insecure", outbound["tls"])
+
     def test_xhttp_validates_on_lx_only(self):
         lx = find_singbox_lx_binary()
         if not lx:
