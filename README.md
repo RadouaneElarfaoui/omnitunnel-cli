@@ -21,7 +21,7 @@
 
 ```bash
 # 1. Sing-Box LX engine (default; includes XHTTP transport)
-curl -fsSL https://raw.githubusercontent.com/RadouaneElarfaoui/omnitunnel-cli/7ffa5fb1fa7cfef69d33abdf6dcce8a2ca4f4de2/install-singbox-lx.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/RadouaneElarfaoui/omnitunnel-cli/63f0a9ee1d99880ed029e3cd6783e750e08f447e/install-singbox-lx.sh | sudo bash
 
 # 2. OmniTunnel CLI
 wget -O /tmp/omnitunnel-cli_2.4.deb https://github.com/RadouaneElarfaoui/omnitunnel-cli/releases/download/v2.4/omnitunnel-cli_2.4.deb && sudo apt install -y /tmp/omnitunnel-cli_2.4.deb

@@ -12,7 +12,7 @@ SINGBOX_BIN="${ENGINE_BIN#*|}"
 if [ -z "$SINGBOX_BIN" ]; then
     if [ "$ENGINE" = "singbox-lx" ]; then
         echo "✕ sing-box-lx engine selected but binary not found — install it with:"
-        echo "  curl -fsSL https://raw.githubusercontent.com/RadouaneElarfaoui/omnitunnel-cli/7ffa5fb1fa7cfef69d33abdf6dcce8a2ca4f4de2/install-singbox-lx.sh | sudo bash"
+        echo "  curl -fsSL https://raw.githubusercontent.com/RadouaneElarfaoui/omnitunnel-cli/63f0a9ee1d99880ed029e3cd6783e750e08f447e/install-singbox-lx.sh | sudo bash"
         echo "  Not falling back: this profile needs the XHTTP transport."
         exit 1
     fi
@@ -108,7 +108,7 @@ if [ "$ENGINE" != "singbox-lx" ]; then
     if python3 -c "import json, sys; cfg = json.load(open('$CONFIG_FILE')); sys.exit(0 if any(((o.get('transport') or {}).get('type') == 'xhttp') for o in cfg.get('outbounds', [])) else 1)"; then
         echo "✕ This profile uses the XHTTP transport — switch engine to sing-box-lx"
         echo "  (menu: Edit → Engine) or install it with:"
-        echo "  curl -fsSL https://raw.githubusercontent.com/RadouaneElarfaoui/omnitunnel-cli/7ffa5fb1fa7cfef69d33abdf6dcce8a2ca4f4de2/install-singbox-lx.sh | sudo bash"
+        echo "  curl -fsSL https://raw.githubusercontent.com/RadouaneElarfaoui/omnitunnel-cli/63f0a9ee1d99880ed029e3cd6783e750e08f447e/install-singbox-lx.sh | sudo bash"
         exit 1
     fi
 fi
