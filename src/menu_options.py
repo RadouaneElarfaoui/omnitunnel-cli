@@ -31,7 +31,7 @@ from src.singbox_adapter import find_singbox_lx_binary
 
 LX_INSTALL_ONELINER = (
     "curl -fsSL https://raw.githubusercontent.com/"
-    "RadouaneElarfaoui/omnitunnel-cli/main/install-singbox-lx.sh | sudo bash"
+    "RadouaneElarfaoui/omnitunnel-cli/7ffa5fb1fa7cfef69d33abdf6dcce8a2ca4f4de2/install-singbox-lx.sh | sudo bash"
 )
 
 _main_exit_flag = [False]
