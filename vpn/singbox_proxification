@@ -102,6 +102,39 @@ else:
     save_singbox_config(sb_cfg, config_file)
 "
 
+# Bake outbound server IPs: resolve domain endpoints via system DNS at
+# launch so the tunnel never has to resolve its own server through itself
+# (DoH detours through the outbound being dialed = deadlock). TLS SNI and
+# Host headers already carry the hostname, so replacing server with its IP
+# changes nothing on the wire. Re-resolved on every (re)connect; unresolvable
+# hosts are left as-is.
+python3 -c "
+import json, socket
+path = '$CONFIG_FILE'
+with open(path, encoding='utf-8') as f:
+    cfg = json.load(f)
+def is_ip(host):
+    for family in (socket.AF_INET, socket.AF_INET6):
+        try:
+            socket.inet_pton(family, host)
+            return True
+        except OSError:
+            pass
+    return False
+for outbound in cfg.get('outbounds', []):
+    host = outbound.get('server', '')
+    if host and not is_ip(host):
+        try:
+            ip = socket.gethostbyname(host)
+        except Exception as e:
+            print(f'Warning: cannot resolve {host} ({e}) — leaving as-is', flush=True)
+            continue
+        print(f'Resolved {host} -> {ip}', flush=True)
+        outbound['server'] = ip
+with open(path, 'w', encoding='utf-8') as f:
+    json.dump(cfg, f, ensure_ascii=False, indent=2)
+"
+
 # Fail closed with a clear message when a profile needs XHTTP but the
 # stock engine is selected (stock sing-box would die on unknown transport).
 if [ "$ENGINE" != "singbox-lx" ]; then
