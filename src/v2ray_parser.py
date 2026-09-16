@@ -10,6 +10,7 @@ import sys
 import json
 import base64
 import binascii
+import ipaddress
 import urllib.parse
 
 def safe_b64decode(s: str) -> str:
@@ -23,6 +24,33 @@ def safe_b64decode(s: str) -> str:
         return base64.b64decode(s).decode('utf-8', errors='ignore')
     except (binascii.Error, Exception) as e:
         raise ValueError(f"Invalid base64 data: {e}")
+
+def _parse_insecure(params) -> bool:
+    """allowInsecure=1 (or insecure=1) → skip TLS verification."""
+    val = params.get("allowInsecure", params.get("insecure", [""]))[0]
+    return val.strip().lower() in ("1", "true", "yes")
+
+
+def _parse_alpn(params, transport_type) -> list:
+    """ALPN list from the link; h2 stripped for ws (breaks the upgrade)."""
+    raw = params.get("alpn", [""])[0]
+    if not raw:
+        return []
+    items = [a.strip() for a in raw.split(",") if a.strip()]
+    if transport_type == "ws":
+        # WS upgrade requires HTTP/1.1: offering h2 makes CDNs
+        # negotiate HTTP/2 and the upgrade dies (EOF on every dial).
+        items = [a for a in items if a != "h2"] or ["http/1.1"]
+    return items
+
+
+def _is_ip_literal(host: str) -> bool:
+    try:
+        ipaddress.ip_address(host)
+        return True
+    except ValueError:
+        return False
+
 
 def parse_vless(uri: str) -> tuple:
     """
@@ -80,13 +108,10 @@ def parse_vless(uri: str) -> tuple:
         if insecure.strip().lower() in ("1", "true", "yes"):
             tls_config["insecure"] = True
         outbound["tls"] = tls_config
-        alpn = params.get("alpn", [""])[0]
-        if alpn:
-            alpn_list = [a.strip() for a in alpn.split(",") if a.strip()]
-            if transport_type == "ws":
-                # WS upgrade requires HTTP/1.1: offering h2 makes CDNs
-                # negotiate HTTP/2 and the upgrade dies (EOF on every dial).
-                alpn_list = [a for a in alpn_list if a != "h2"] or ["http/1.1"]
+        if _parse_insecure(params):
+            outbound["tls"]["insecure"] = True
+        alpn_list = _parse_alpn(params, transport_type)
+        if alpn_list:
             outbound["tls"]["alpn"] = alpn_list
 
     # Transport Configuration
@@ -201,6 +226,11 @@ def parse_trojan(uri: str) -> tuple:
             "server_name": sni
         }
     }
+    if _parse_insecure(params):
+        outbound["tls"]["insecure"] = True
+    alpn_list = _parse_alpn(params, transport_type)
+    if alpn_list:
+        outbound["tls"]["alpn"] = alpn_list
 
     if transport_type == "ws":
         outbound["transport"] = {
@@ -363,12 +393,22 @@ def generate_v2ray_singbox_config(outbound_dict: dict, tun_interface="tun0", log
         _sys2.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         from src.singbox_adapter import build_base_singbox, tun_inbound, direct_outbound
 
-    return build_base_singbox(
+    cfg = build_base_singbox(
         log_level=log_level,
         detour_tag=outbound_dict["tag"],
         inbounds=[tun_inbound(tun_interface)],
         outbounds=[outbound_dict, direct_outbound()],
     )
+
+    # DNS escape hatch: when the outbound server is a domain, resolving it
+    # via DoH deadlocks (DoH detours through the very outbound being dialed).
+    # Resolve just that hostname with the system resolver; everything else
+    # keeps going through DoH inside the tunnel.
+    server = outbound_dict.get("server", "")
+    if server and not _is_ip_literal(server):
+        cfg["dns"]["servers"].append({"tag": "local-dns", "type": "local"})
+        cfg["dns"]["rules"] = [{"domain": [server], "server": "local-dns"}]
+    return cfg
 
 if __name__ == '__main__':
     if len(sys.argv) > 1:

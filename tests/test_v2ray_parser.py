@@ -129,5 +129,30 @@ class TestV2RayParser(unittest.TestCase):
         cfg = generate_v2ray_singbox_config(outbound)
         self.validate_with_singbox(cfg)
 
+    def test_trojan_allowinsecure_and_ws_alpn(self):
+        uri = ("trojan://pw@edge.example.com:443?security=tls&type=ws"
+               "&host=edge.example.com&sni=edge.example.com&path=/w"
+               "&alpn=h2,http/1.1&allowInsecure=1#T")
+        outbound, _ = parse_v2ray_uri(uri)
+        self.assertTrue(outbound["tls"]["insecure"])
+        self.assertEqual(outbound["tls"]["alpn"], ["http/1.1"])
+
+    def test_dns_escape_rule_for_domain_server(self):
+        outbound, _ = parse_v2ray_uri(
+            "trojan://pw@edge.example.com:443?security=tls&type=ws#T")
+        cfg = generate_v2ray_singbox_config(outbound)
+        tags = [s["tag"] for s in cfg["dns"]["servers"]]
+        self.assertIn("local-dns", tags)
+        self.assertEqual(cfg["dns"]["rules"],
+                         [{"domain": ["edge.example.com"], "server": "local-dns"}])
+
+    def test_no_dns_escape_rule_for_ip_server(self):
+        outbound, _ = parse_v2ray_uri(
+            "trojan://pw@1.2.3.4:443?security=tls&type=ws#T")
+        cfg = generate_v2ray_singbox_config(outbound)
+        tags = [s["tag"] for s in cfg["dns"]["servers"]]
+        self.assertNotIn("local-dns", tags)
+        self.assertNotIn("rules", cfg["dns"])
+
 if __name__ == '__main__':
     unittest.main()
