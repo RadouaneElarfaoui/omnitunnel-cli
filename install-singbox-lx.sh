@@ -52,35 +52,20 @@ TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
 echo -e "${BLUE}[*] Downloading sing-box-lx $LX_VERSION ($LX_ARCH)...${NC}"
-# wget -c: resumable + progress bar. curl kept as fallback (also resumable via -C -).
-if command -v wget >/dev/null 2>&1; then
-    wget -c --show-progress --progress=bar:force -P "$TMP_DIR" "$BASE_URL/$TARBALL"
-    wget -q -O "$TMP_DIR/SHA256SUMS" "$BASE_URL/SHA256SUMS"
-elif command -v curl >/dev/null 2>&1; then
-    curl -fSL -C - --progress-bar -o "$TMP_DIR/$TARBALL" "$BASE_URL/$TARBALL"
-    curl -fsSL -o "$TMP_DIR/SHA256SUMS" "$BASE_URL/SHA256SUMS"
-else
-    echo -e "${RED}[✕] Need wget or curl to download sing-box-lx.${NC}"
+if ! command -v wget >/dev/null 2>&1; then
+    echo -e "${RED}[✕] Need wget to download sing-box-lx.${NC}"
     exit 1
 fi
+wget -c -P /tmp/ "$BASE_URL/$TARBALL"
+wget -q -O "$TMP_DIR/SHA256SUMS" "$BASE_URL/SHA256SUMS"
+DL_FILE="/tmp/$TARBALL"
 
 echo -e "${BLUE}[*] Verifying checksum...${NC}"
-(cd "$TMP_DIR" && grep "  $TARBALL\$" SHA256SUMS > sha.want) || {
-    echo -e "${RED}[✕] Checksum entry for $TARBALL not found in upstream SHA256SUMS.${NC}"
-    exit 1
-}
-if command -v sha256sum >/dev/null 2>&1; then
-    (cd "$TMP_DIR" && sha256sum -c sha.want) || exit 1
-elif command -v shasum >/dev/null 2>&1; then
-    (cd "$TMP_DIR" && shasum -a 256 -c sha.want) || exit 1
-else
-    echo -e "${RED}[✕] Need sha256sum or shasum to verify the download.${NC}"
-    exit 1
-fi
+echo "$(grep "  $TARBALL\$" "$TMP_DIR/SHA256SUMS" | cut -d' ' -f1)  $DL_FILE" | sha256sum -c -
 
 echo -e "${BLUE}[*] Installing to $INSTALL_DIR...${NC}"
 mkdir -p "$INSTALL_DIR" "$BIN_DIR"
-tar -xzf "$TMP_DIR/$TARBALL" -C "$TMP_DIR"
+tar -xzf "$DL_FILE" -C "$TMP_DIR"
 # Release tarballs contain a single top-level sing-box binary (plus docs).
 BIN_SRC="$(find "$TMP_DIR" -maxdepth 2 -type f -name 'sing-box' | head -n 1)"
 if [ -z "$BIN_SRC" ]; then
@@ -98,4 +83,6 @@ if ! echo "$INSTALLED" | grep -q "lx"; then
     exit 1
 fi
 echo -e "${GREEN}[✔] sing-box-lx installed: $BIN_LINK ($INSTALLED)${NC}"
-echo -e "    OmniTunnel will use it automatically for xhttp profiles once wired as an engine."
+echo -e "    OmniTunnel uses it automatically for xhttp profiles (Edit → Engine)."
+# Verified install: drop the cached tarball, keep the dir for next time.
+rm -f "$DL_FILE"
