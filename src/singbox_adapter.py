@@ -235,9 +235,9 @@ def save_singbox_config(singbox_dict: dict, output_path: str):
     with open(output_path, 'w', encoding='utf-8') as f:
         json.dump(singbox_dict, f, ensure_ascii=False, indent=2)
 
-def validate_singbox_config(config_path: str) -> tuple:
+def validate_singbox_config(config_path: str, binary=None) -> tuple:
     """Validate sing-box configuration file using 'sing-box check'."""
-    binary = find_singbox_binary()
+    binary = binary or find_singbox_binary()
     if not binary:
         return False, "sing-box binary not found on system."
 

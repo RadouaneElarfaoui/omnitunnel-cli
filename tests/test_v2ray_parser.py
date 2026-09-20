@@ -18,12 +18,13 @@ from src.v2ray_parser import (
     parse_v2ray_uri,
     generate_v2ray_singbox_config
 )
-from src.singbox_adapter import find_singbox_binary
+from src.singbox_adapter import find_singbox_binary, find_singbox_lx_binary
 
 class TestV2RayParser(unittest.TestCase):
 
     def setUp(self):
-        self.singbox_bin = find_singbox_binary()
+        # lx is a superset: validates stock-shape configs too.
+        self.singbox_bin = find_singbox_binary() or find_singbox_lx_binary()
 
     def validate_with_singbox(self, config_dict):
         if not self.singbox_bin:

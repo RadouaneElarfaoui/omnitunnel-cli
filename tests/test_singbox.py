@@ -12,6 +12,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.singbox_adapter import (
     find_singbox_binary,
+    find_singbox_lx_binary,
     generate_singbox_config,
     save_singbox_config,
     validate_singbox_config,
@@ -53,9 +54,9 @@ class TestSingboxAdapter(unittest.TestCase):
         self.assertEqual(socks_out["server_port"], 1080)
 
     def test_save_and_validate_config(self):
-        binary = find_singbox_binary()
+        binary = find_singbox_binary() or find_singbox_lx_binary()
         if not binary:
-            self.skipTest("sing-box binary not installed on host system.")
+            self.skipTest("no sing-box binary installed on host system.")
 
         sample_config = {
             "mode": {"connection_mode": "3"},
@@ -67,7 +68,7 @@ class TestSingboxAdapter(unittest.TestCase):
         save_singbox_config(sb_dict, out_file)
         self.assertTrue(os.path.exists(out_file))
 
-        is_valid, msg = validate_singbox_config(out_file)
+        is_valid, msg = validate_singbox_config(out_file, binary=binary)
         self.assertTrue(is_valid, f"Validation failed: {msg}")
 
     def test_singbox_log_level_setting(self):
