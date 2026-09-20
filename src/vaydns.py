@@ -8,10 +8,15 @@ local SSH backend over a DNS-tunneled transport:
     ./vaydns-client -tcp 8.8.8.8:53 -pubkey-file server.pub \\
         -domain vay.krel.qzz.io -listen 127.0.0.1:2222
 
-OmniTunnel manages the whole lifecycle: it allocates N free listen ports
-(count + auto), spawns one client per port, and generates a sing-box
-config with one `ssh` outbound per backend behind a single balancing
-group, so traffic spreads across all instances.
+OmniTunnel manages the whole lifecycle: it allocates N free backend ports
+(count + auto), spawns one client per port, then fronts each backend with
+a persistent OpenSSH `ssh -D` forwarder (ONE handshake, multiplexed
+streams — sing-box's `ssh` outbound dials per connection, and parallel
+handshakes over a DNS tunnel collapse). Sing-box keeps the frontend
+(single SOCKS/HTTP or TUN inbounds, DoH hijack, logs) with one `socks`
+outbound per forwarder behind a single balancing group — except at
+N==1, where the group is skipped and route.final points at the lone
+outbound directly.
 
  balancing group:
     `type: loadbalance` is a brand-new upstream PR (post-1.14.1: strategies
@@ -56,6 +61,7 @@ DEFAULT_TCP = "8.8.8.8:53"
 DEFAULT_INSTANCES = 2
 MAX_INSTANCES = 16
 DEFAULT_BASE_PORT = 2222
+DEFAULT_SOCKS_BASE = 2240
 LISTEN_HOST = "127.0.0.1"
 
 BALANCE_TAG = "vaydns-balance"
@@ -64,6 +70,7 @@ BALANCE_URL = "https://www.gstatic.com/generate_204"
 BALANCE_INTERVAL = "1m"
 
 PIDFILE_PATTERN = "/tmp/omnitunnel-vaydns-*.pid"
+FWDPID_PATTERN = "/tmp/omnitunnel-vaydns-fwd-*.pid"
 
 DEFAULT_WAIT_SECS = 30
 
@@ -209,7 +216,7 @@ VAYDNS_INSTALL_HINT = (
 # ---- ports ----------------------------------------------------------------
 
 def allocate_vaydns_ports(count, base=None) -> list:
-    """Allocate `count` distinct free 127.0.0.1 listen ports, +1 until free."""
+    """Allocate `count` distinct free 127.0.0.1 backend ports, +1 until free."""
     from src.ports import find_free_port, get_env_port
     if base is None:
         base = get_env_port("OMNI_VAYDNS_BASE_PORT", DEFAULT_BASE_PORT)
@@ -221,6 +228,30 @@ def allocate_vaydns_ports(count, base=None) -> list:
         ports.append(port)
         start = port + 1
     return ports
+
+
+def allocate_vaydns_stack(count, base=None, socks_base=None) -> tuple:
+    """Allocate (backend_ports, forwarder_socks_ports), all mutually distinct."""
+    from src.ports import find_free_port, get_env_port
+    if socks_base is None:
+        socks_base = get_env_port("OMNI_VAYDNS_SOCKS_BASE", DEFAULT_SOCKS_BASE)
+    n = _parse_instances(count)
+    backends = allocate_vaydns_ports(n, base=base)
+    used = set(backends)
+    socks = []
+    start = int(socks_base)
+    for _ in range(n):
+        while start in used or not _port_free(start):
+            start += 1
+        used.add(start)
+        socks.append(start)
+        start += 1
+    return backends, socks
+
+
+def _port_free(port) -> bool:
+    from src.ports import is_port_free
+    return is_port_free(port)
 
 
 # ---- client lifecycle ------------------------------------------------------
@@ -295,6 +326,21 @@ def wait_for_backends(ports, timeout=None) -> list:
     sing-box earlier means failed dials and an empty balance group.
     Returns the subset of ports that never came up (empty = all ready).
     """
+    return _wait_open(ports, timeout=timeout, banner=b"SSH-")
+
+
+def wait_for_socks_ports(ports, timeout=None) -> list:
+    """Block until every forwarder accepts TCP (SOCKS sends no banner)."""
+    return _wait_open(ports, timeout=timeout, banner=None)
+
+
+def _wait_open(ports, timeout=None, banner=None) -> list:
+    """Block until every port accepts TCP (and serves `banner` when given).
+
+    Returns the subset that never came up. `banner=None` = TCP-accept only
+    (SOCKS sends no greeting); backends require the SSH banner so sing-box
+    never starts against a half-open DNS tunnel.
+    """
     import socket
     import time
     if timeout is None:
@@ -309,12 +355,14 @@ def wait_for_backends(ports, timeout=None) -> list:
             try:
                 s = socket.create_connection((LISTEN_HOST, port), timeout=2)
                 try:
-                    s.settimeout(2)
-                    banner = s.recv(64)
+                    if banner is None:
+                        pending.remove(port)
+                    else:
+                        s.settimeout(2)
+                        if s.recv(64).startswith(banner):
+                            pending.remove(port)
                 finally:
                     s.close()
-                if banner.startswith(b"SSH-"):
-                    pending.remove(port)
             except OSError:
                 pass
         if pending:
@@ -324,17 +372,140 @@ def wait_for_backends(ports, timeout=None) -> list:
     return pending
 
 
+# ---- ssh -D forwarders ----------------------------------------------------
+# One persistent OpenSSH dynamic forward per backend: a single handshake,
+# then unlimited multiplexed streams — the shape that survives DNS tunnels.
+
+def find_sshpass():
+    """sshpass path, or None (password auth fails closed without it)."""
+    return shutil.which("sshpass")
+
+
+def resolve_key_file(password_field):
+    """Mirror src/ssh.py key lookup: explicit path, cfgs/*, ~/.ssh/*."""
+    candidates = []
+    if password_field:
+        expanded = os.path.expanduser(str(password_field).strip())
+        if os.path.isfile(expanded):
+            return expanded
+        try:
+            from src.paths import PROJECT_DIR
+            rel = os.path.join(PROJECT_DIR, expanded)
+            if os.path.isfile(rel):
+                return rel
+            for name in ("privatekey.pem", "publickey.pem", "id_rsa",
+                         "id_ed25519", "id_ecdsa"):
+                for base in (os.path.join(PROJECT_DIR, "cfgs"),
+                             PROJECT_DIR):
+                    p = os.path.join(base, name)
+                    if os.path.isfile(p):
+                        candidates.append(p)
+        except Exception:
+            pass
+    home = os.path.expanduser("~")
+    for name in ("id_ed25519", "id_rsa", "id_ecdsa"):
+        p = os.path.join(home, ".ssh", name)
+        if os.path.isfile(p):
+            candidates.append(p)
+    return candidates[0] if candidates else None
+
+
+def build_forwarder_cmd(username, backend_port, socks_port, auth_method,
+                        password) -> tuple:
+    """(argv, env) for one `ssh -D` forwarder onto a local backend.
+
+    Password auth wraps with `sshpass -e` (SSHPASS env, never cmdline);
+    publickey resolves a key file like the ssh flow. Raises ValueError
+    when the auth material is missing.
+    """
+    opts = [
+        "-p", str(backend_port),
+        "-N",
+        "-D", f"{LISTEN_HOST}:{socks_port}",
+        "-o", "ConnectTimeout=8",
+        "-o", "StrictHostKeyChecking=no",
+        "-o", "UserKnownHostsFile=/dev/null",
+        "-o", "ServerAliveInterval=15",
+        "-o", "ServerAliveCountMax=3",
+    ]
+    target = f"{username}@{LISTEN_HOST}"
+    env = None
+    if (auth_method or "password").strip().lower() == "publickey":
+        key = resolve_key_file(password)
+        if not key:
+            raise ValueError(
+                "Publickey auth selected but no private key file found "
+                "(checked password field, cfgs/privatekey.pem, ~/.ssh/id_*)")
+        argv = ["ssh", "-i", key, "-o", "IdentitiesOnly=yes"] + opts + [target]
+    else:
+        if not (password or "").strip():
+            raise ValueError("Password auth selected but password is empty")
+        argv = ["sshpass", "-e", "ssh"] + opts + [target]
+        env = {"SSHPASS": password}
+    return argv, env
+
+
+def _fwd_pidfile(socks_port) -> str:
+    return f"/tmp/omnitunnel-vaydns-fwd-{socks_port}.pid"
+
+
+def spawn_forwarders(specs) -> list:
+    """Start detached `ssh -D` forwarders. specs = [(argv, env)], env merged
+    over os.environ. Returns Popen list; PIDs to fwd pidfiles."""
+    procs = []
+    for argv, extra_env in specs:
+        env = dict(os.environ)
+        if extra_env:
+            env.update(extra_env)
+        proc = subprocess.Popen(
+            argv,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            stdin=subprocess.DEVNULL,
+            start_new_session=True,
+            env=env,
+        )
+        socks_port = argv[argv.index("-D") + 1].rsplit(":", 1)[-1]
+        try:
+            with open(_fwd_pidfile(socks_port), "w", encoding="utf-8") as f:
+                f.write(str(proc.pid))
+        except OSError:
+            pass
+        procs.append(proc)
+    return procs
+
+
+def stop_forwarders(socks_ports=None):
+    """Kill forwarder processes via fwd pidfiles (all when None)."""
+    if socks_ports is None:
+        pidfiles = glob.glob(FWDPID_PATTERN)
+    else:
+        pidfiles = [_fwd_pidfile(p) for p in socks_ports]
+    for pidfile in pidfiles:
+        try:
+            with open(pidfile, encoding="utf-8") as f:
+                pid = int(f.read().strip())
+            try:
+                os.killpg(pid, signal.SIGTERM)
+            except (OSError, ProcessLookupError):
+                os.kill(pid, signal.SIGTERM)
+        except (OSError, ValueError):
+            pass
+        try:
+            os.remove(pidfile)
+        except OSError:
+            pass
+
+
 # ---- sing-box config -------------------------------------------------------
 
-def ssh_backend_outbound(tag, listen_port, username, password) -> dict:
-    """One sing-box ssh outbound dialing a local vaydns-client backend."""
+def socks_forwarder_outbound(tag, socks_port) -> dict:
+    """One sing-box socks outbound dialing a local `ssh -D` forwarder."""
     return {
-        "type": "ssh",
+        "type": "socks",
         "tag": tag,
         "server": LISTEN_HOST,
-        "server_port": int(listen_port),
-        "user": username,
-        "password": password,
+        "server_port": int(socks_port),
     }
 
 
@@ -358,34 +529,41 @@ def balance_group_outbound(tags) -> dict:
     }
 
 
-def generate_vaydns_singbox_config(username, password, listen_ports,
+def generate_vaydns_singbox_config(username, password, socks_ports,
                                    output_mode="tun", socks_in_port=1081,
                                    http_in_port=8080, tun_interface="tun0",
                                    log_level="warn") -> dict:
-    """Full sing-box config: N ssh backends behind one balancing group.
+    """Full sing-box config: one socks outbound per `ssh -D` forwarder.
 
-    Inbounds follow the runtime output mode (reuse apply_output_mode);
-    route.final and the DoH detour both point at the balance group so
-    everything, including DNS, rides the tunnel.
+    N==1 skips the group and routes straight at the lone outbound; N>1
+    balances round-robin. route.final and the DoH detour both point at the
+    exit (group or single) so everything, including DNS, rides the tunnel.
+    Inbounds follow the runtime output mode (reuse apply_output_mode).
+    (username/password are kept in the signature for callers; auth lives
+    in the forwarders, not in this config.)
     """
     from src.singbox_adapter import (
         build_base_singbox, direct_outbound, apply_output_mode,
     )
-    tags = [f"vaydns-ssh-{i + 1}" for i in range(len(listen_ports))]
+    tags = [f"vaydns-socks-{i + 1}" for i in range(len(socks_ports))]
     outbounds = [
-        ssh_backend_outbound(tag, port, username, password)
-        for tag, port in zip(tags, listen_ports)
+        socks_forwarder_outbound(tag, port)
+        for tag, port in zip(tags, socks_ports)
     ]
-    outbounds.append(balance_group_outbound(tags))
+    if len(tags) == 1:
+        exit_tag = tags[0]
+    else:
+        outbounds.append(balance_group_outbound(tags))
+        exit_tag = BALANCE_TAG
     outbounds.append(direct_outbound())
     cfg = build_base_singbox(
         log_level=log_level,
-        detour_tag=BALANCE_TAG,
+        detour_tag=exit_tag,
         inbounds=[],
         outbounds=outbounds,
     )
-    cfg["route"]["final"] = BALANCE_TAG
-    # ssh outbounds are TCP-only: UDP (QUIC, etc.) has no carrier, so reject
+    cfg["route"]["final"] = exit_tag
+    # forwarders are TCP-only: UDP (QUIC, etc.) has no carrier, so reject
     # it fast instead of spamming "missing supported outbound" — clients fall
     # back to TCP. DNS:53 is hijacked to DoH above before this rule hits.
     cfg["route"]["rules"].append({"network": "udp", "action": "reject"})
@@ -487,13 +665,22 @@ def _cli_up(args) -> int:
 
 
 def _cli_down(args) -> int:
-    """Kill clients; --ports limits to one instance's ports (parallel-safe)."""
+    """Kill clients and/or forwarders; --ports/--socks scope (parallel-safe)."""
     import argparse
     p = argparse.ArgumentParser(prog="vaydns.py down")
     p.add_argument("--ports", default="")
+    p.add_argument("--socks", default="")
     ns = p.parse_args(args)
-    ports = [int(x) for x in ns.ports.split() if x.strip().isdigit()]
-    stop_clients(ports or None)
+    if ns.socks.strip():
+        socks = [int(x) for x in ns.socks.split() if x.strip().isdigit()]
+        stop_forwarders(socks or None)
+    elif not ns.ports.strip():
+        stop_forwarders()
+    if ns.ports.strip():
+        ports = [int(x) for x in ns.ports.split() if x.strip().isdigit()]
+        stop_clients(ports or None)
+    elif not ns.socks.strip():
+        stop_clients()
     return 0
 
 

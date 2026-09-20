@@ -48,19 +48,29 @@ else
     CONFIG_FILE="$PROJECT_DIR/cfgs/singbox_config.json"
 fi
 
-# VayDNS mode: backend listen ports live in a file (per-instance in proxy
-# mode) so the EXIT trap can stop exactly this instance's clients.
+# VayDNS mode: backend listen ports + forwarder SOCKS ports live in files
+# (per-instance in proxy mode) so the EXIT trap stops exactly this
+# instance's processes — never another parallel proxy's.
 if [ "${OUTPUT_MODE:-tun}" = "socks" ]; then
-    VAYDNS_PORTS_FILE="/tmp/omnitunnel-vaydns-ports-${OMNI_SOCKS_IN_PORT}.json"
+    VAYDNS_PORTS_FILE="/tmp/omnitunnel-vaydns-${OMNI_SOCKS_IN_PORT}.ports"
+    VAYDNS_SOCKS_FILE="/tmp/omnitunnel-vaydns-${OMNI_SOCKS_IN_PORT}.socks"
 else
-    VAYDNS_PORTS_FILE="/tmp/omnitunnel-vaydns-ports-tun.json"
+    VAYDNS_PORTS_FILE="/tmp/omnitunnel-vaydns-tun.ports"
+    VAYDNS_SOCKS_FILE="/tmp/omnitunnel-vaydns-tun.socks"
 fi
 vaydns_cleanup() {
+    if [ -f "$VAYDNS_SOCKS_FILE" ]; then
+        python3 "$PROJECT_DIR/src/vaydns.py" down --socks "$(cat "$VAYDNS_SOCKS_FILE" 2>/dev/null)" 2>/dev/null || true
+        rm -f "$VAYDNS_SOCKS_FILE" 2>/dev/null || true
+    fi
     if [ -f "$VAYDNS_PORTS_FILE" ]; then
         python3 "$PROJECT_DIR/src/vaydns.py" down --ports "$(cat "$VAYDNS_PORTS_FILE" 2>/dev/null)" 2>/dev/null || true
         rm -f "$VAYDNS_PORTS_FILE" 2>/dev/null || true
     fi
 }
+# Set now (not after bring-up): Ctrl+C / TERM during the 30s backend wait
+# must still reap spawned clients. No-op for other modes (files absent).
+trap vaydns_cleanup EXIT INT TERM
 
 # Generate fresh sing-box JSON configuration from unified active.ot
 OUTPUT_MODE="${OUTPUT_MODE:-tun}"
@@ -111,12 +121,14 @@ if mode == 'v2ray':
                                          socks_in_port=socks_in, http_in_port=http_in)
         save_singbox_config(sb_cfg, config_file)
 elif mode == 'vaydns':
-    # VayDNS: spawn N backend clients first (fail closed without binary /
-    # pubkey), then build the ssh+balance config over their listen ports.
-    from src.vaydns import (generate_vaydns_singbox_config, allocate_vaydns_ports,
-                            spawn_clients, stop_clients, wait_for_backends,
-                            find_vaydns_binary, VAYDNS_INSTALL_HINT,
-                            resolve_pubkey_file)
+    # VayDNS stack, in order: clients -> wait banners -> ssh -D forwarders
+    # (one handshake each, multiplexed) -> wait SOCKS -> sing-box over the
+    # forwarders. Fail closed at every step, leaking nothing.
+    from src.vaydns import (generate_vaydns_singbox_config, allocate_vaydns_stack,
+                            spawn_clients, spawn_forwarders, build_forwarder_cmd,
+                            stop_clients, stop_forwarders, wait_for_backends,
+                            wait_for_socks_ports, find_vaydns_binary, find_sshpass,
+                            VAYDNS_INSTALL_HINT, resolve_pubkey_file)
     binary = find_vaydns_binary()
     if not binary:
         print(f'✕ {VAYDNS_INSTALL_HINT}', flush=True)
@@ -136,24 +148,49 @@ elif mode == 'vaydns':
         raise SystemExit(1)
     user = config.get('ssh', 'username', fallback='')
     password = config.get('ssh', 'password', fallback='')
+    auth_method = config.get('ssh', 'auth_method', fallback='password')
+    if not user:
+        print('✕ VayDNS needs the shared SSH username (menu: Edit)', flush=True)
+        raise SystemExit(1)
+    if auth_method.strip().lower() != 'publickey' and not find_sshpass():
+        print('✕ sshpass not found (password auth needs it): sudo apt install -y sshpass', flush=True)
+        raise SystemExit(1)
     log_level = config.get('engine', 'singbox_log_level', fallback='warn')
     if log_level not in ('info', 'debug', 'warn', 'error'):
         log_level = 'warn'
-    vaydns_ports = allocate_vaydns_ports(instances)
-    spawn_clients(binary, tcp, pubkey, domain, vaydns_ports)
-    # DNS handshake takes seconds — wait for SSH banners so sing-box never
-    # starts against dead backends (empty balance group + check timeouts).
-    missing = wait_for_backends(vaydns_ports)
+    backend_ports, socks_ports = allocate_vaydns_stack(instances)
+    spawn_clients(binary, tcp, pubkey, domain, backend_ports)
+    with open('$VAYDNS_PORTS_FILE', 'w', encoding='utf-8') as f:
+        f.write(' '.join(str(p) for p in backend_ports))
+    # DNS handshake takes seconds — wait for SSH banners so nothing starts
+    # against dead backends (empty balance group + check timeouts).
+    missing = wait_for_backends(backend_ports)
     if missing:
         print('✕ vaydns-client backend(s) never came up:', ', '.join('127.0.0.1:%s' % p for p in missing), flush=True)
         print('  Check domain / shared key / server, then retry (wait: OMNI_VAYDNS_WAIT_SECS)', flush=True)
-        stop_clients(vaydns_ports)
+        stop_clients(backend_ports)
         raise SystemExit(1)
-    with open('$VAYDNS_PORTS_FILE', 'w', encoding='utf-8') as f:
-        f.write(' '.join(str(p) for p in vaydns_ports))
-    ports_str = ', 127.0.0.1:'.join(str(p) for p in vaydns_ports)
-    print('Spawned %d vaydns-client backend(s) on 127.0.0.1:%s' % (len(vaydns_ports), ports_str), flush=True)
-    sb_cfg = generate_vaydns_singbox_config(user, password, vaydns_ports,
+    try:
+        specs = [build_forwarder_cmd(user, b, s, auth_method, password)
+                 for b, s in zip(backend_ports, socks_ports)]
+    except ValueError as e:
+        print(f'✕ {e}', flush=True)
+        stop_clients(backend_ports)
+        raise SystemExit(1)
+    spawn_forwarders(specs)
+    with open('$VAYDNS_SOCKS_FILE', 'w', encoding='utf-8') as f:
+        f.write(' '.join(str(p) for p in socks_ports))
+    missing_socks = wait_for_socks_ports(socks_ports)
+    if missing_socks:
+        print('✕ ssh forwarder(s) never came up:', ', '.join('127.0.0.1:%s' % p for p in missing_socks), flush=True)
+        stop_forwarders(socks_ports)
+        stop_clients(backend_ports)
+        raise SystemExit(1)
+    print('Stack up: %d backend(s) 127.0.0.1:%s -> ssh -D 127.0.0.1:%s' % (
+        len(backend_ports),
+        ', 127.0.0.1:'.join(str(p) for p in backend_ports),
+        ', 127.0.0.1:'.join(str(p) for p in socks_ports)), flush=True)
+    sb_cfg = generate_vaydns_singbox_config(user, password, socks_ports,
                                             output_mode=output_mode,
                                             socks_in_port=socks_in,
                                             http_in_port=http_in,
@@ -216,13 +253,12 @@ VAYDNS_ACTIVE=0
 MODE_NOW="$(python3 -c 'import sys; sys.path.insert(0, "'"$PROJECT_DIR"'"); from src.menu_common import read_config, status_snapshot; print(status_snapshot(read_config())["mode"])' 2>/dev/null)"
 if [ "$MODE_NOW" = "vaydns" ]; then
     VAYDNS_ACTIVE=1
-    trap vaydns_cleanup EXIT INT TERM
 fi
 
 if [ "$VAYDNS_ACTIVE" = "1" ]; then
     if [ "$OUTPUT_MODE" = "socks" ]; then
-        echo "✔ Starting $ENGINE Proxy Engine (VayDNS ×$(cat "$VAYDNS_PORTS_FILE" 2>/dev/null | wc -w) backends)..."
-        echo "  SOCKS5 → 0.0.0.0:$OMNI_SOCKS_IN_PORT (balanced over 127.0.0.1:$(cat "$VAYDNS_PORTS_FILE" 2>/dev/null | tr ' ' ','))"
+        echo "✔ Starting $ENGINE Proxy Engine (VayDNS ×$(cat "$VAYDNS_PORTS_FILE" 2>/dev/null | wc -w) backend(s))..."
+        echo "  SOCKS5 → 0.0.0.0:$OMNI_SOCKS_IN_PORT (balanced over ssh -D 127.0.0.1:$(cat "$VAYDNS_SOCKS_FILE" 2>/dev/null | tr ' ' ','))"
         echo "  HTTP   → 0.0.0.0:$OMNI_HTTP_IN_PORT"
         echo "  config → $CONFIG_FILE"
     else

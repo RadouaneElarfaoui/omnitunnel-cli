@@ -119,6 +119,18 @@ fi
 if [ -n "${OMNI_VAYDNS_PORTS:-}" ]; then
     python3 "$PROJECT_DIR/src/vaydns.py" down --ports "$OMNI_VAYDNS_PORTS" 2>/dev/null || true
 fi
+if [ -n "${OMNI_VAYDNS_SOCKS:-}" ]; then
+    python3 "$PROJECT_DIR/src/vaydns.py" down --socks "$OMNI_VAYDNS_SOCKS" 2>/dev/null || true
+fi
+# ...or via this instance's ports files (launcher-owned lifecycle)
+if [ -n "${OMNI_SOCKS_IN_PORT:-}" ]; then
+    if [ -f "/tmp/omnitunnel-vaydns-${OMNI_SOCKS_IN_PORT}.socks" ]; then
+        python3 "$PROJECT_DIR/src/vaydns.py" down --socks "$(cat "/tmp/omnitunnel-vaydns-${OMNI_SOCKS_IN_PORT}.socks")" 2>/dev/null || true
+    fi
+    if [ -f "/tmp/omnitunnel-vaydns-${OMNI_SOCKS_IN_PORT}.ports" ]; then
+        python3 "$PROJECT_DIR/src/vaydns.py" down --ports "$(cat "/tmp/omnitunnel-vaydns-${OMNI_SOCKS_IN_PORT}.ports")" 2>/dev/null || true
+    fi
+fi
 pkill -P $$ 2>/dev/null || true
 echo -e "[+] DONE ${SCOLOR}"
 }

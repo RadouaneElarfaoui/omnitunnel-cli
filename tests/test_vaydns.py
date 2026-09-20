@@ -13,9 +13,13 @@ from src.vaydns import (
     vaydns_config_to_uri,
     is_vaydns_uri,
     allocate_vaydns_ports,
+    allocate_vaydns_stack,
     build_client_cmd,
+    build_forwarder_cmd,
     spawn_clients,
+    spawn_forwarders,
     stop_clients,
+    stop_forwarders,
     find_vaydns_binary,
     activate_vaydns_config,
     store_pubkey_file,
@@ -212,16 +216,18 @@ class TestVaydnsRuntime(unittest.TestCase):
 class TestVaydnsConfig(unittest.TestCase):
 
     def test_shape(self):
-        cfg = generate_vaydns_singbox_config("alice", "pw", [2251, 2252])
-        ssh_obs = [o for o in cfg["outbounds"] if o["type"] == "ssh"]
-        self.assertEqual(len(ssh_obs), 2)
-        self.assertEqual(ssh_obs[0]["server"], "127.0.0.1")
-        self.assertEqual(ssh_obs[0]["server_port"], 2251)
-        self.assertEqual(ssh_obs[0]["user"], "alice")
+        cfg = generate_vaydns_singbox_config("alice", "pw", [2240, 2241])
+        socks_obs = [o for o in cfg["outbounds"] if o["type"] == "socks"]
+        self.assertEqual(len(socks_obs), 2)
+        self.assertEqual(socks_obs[0]["server"], "127.0.0.1")
+        self.assertEqual(socks_obs[0]["server_port"], 2240)
+        self.assertEqual(socks_obs[0]["tag"], "vaydns-socks-1")
+        # no ssh creds leak into the sing-box config (auth lives in ssh -D)
+        self.assertNotIn("password", json.dumps(cfg))
         groups = [o for o in cfg["outbounds"] if o["tag"] == BALANCE_TAG]
         self.assertEqual(len(groups), 1)
         self.assertEqual(groups[0]["outbounds"],
-                         ["vaydns-ssh-1", "vaydns-ssh-2"])
+                         ["vaydns-socks-1", "vaydns-socks-2"])
         # true rotation, not lowest-latency pinning
         self.assertEqual(groups[0]["mode"], "round_robin")
         self.assertEqual(groups[0]["balancer"]["pool"], 2)
@@ -235,12 +241,105 @@ class TestVaydnsConfig(unittest.TestCase):
         # TUN by default
         self.assertEqual(cfg["inbounds"][0]["type"], "tun")
 
+    def test_single_instance_skips_group(self):
+        cfg = generate_vaydns_singbox_config("a", "p", [2240])
+        kinds = [o["type"] for o in cfg["outbounds"]]
+        self.assertNotIn("urltest", kinds)
+        self.assertEqual(cfg["route"]["final"], "vaydns-socks-1")
+        self.assertEqual(cfg["dns"]["servers"][0]["detour"], "vaydns-socks-1")
+
     def test_proxy_inbounds(self):
         cfg = generate_vaydns_singbox_config(
             "a", "p", [2261], output_mode="socks",
             socks_in_port=1181, http_in_port=8180)
         kinds = sorted(o["type"] for o in cfg["inbounds"])
         self.assertEqual(kinds, ["http", "socks"])
+
+    def test_stack_allocates_distinct(self):
+        backends, socks = allocate_vaydns_stack(3, base=25000, socks_base=25100)
+        self.assertEqual(len(backends), 3)
+        self.assertEqual(len(socks), 3)
+        self.assertEqual(len(set(backends + socks)), 6)
+
+    def test_forwarder_cmd_password(self):
+        argv, env = build_forwarder_cmd("root", 2222, 2240, "password", "s3cr3t")
+        self.assertEqual(argv[:3], ["sshpass", "-e", "ssh"])
+        self.assertIn("-D", argv)
+        self.assertEqual(argv[argv.index("-D") + 1], "127.0.0.1:2240")
+        self.assertIn("-p", argv)
+        self.assertEqual(argv[argv.index("-p") + 1], "2222")
+        self.assertIn("-N", argv)
+        self.assertEqual(argv[-1], "root@127.0.0.1")
+        self.assertEqual(env, {"SSHPASS": "s3cr3t"})
+        # password never on the cmdline
+        self.assertNotIn("s3cr3t", " ".join(argv))
+
+    def test_forwarder_cmd_publickey(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            key = os.path.join(tmp, "id_ed")
+            with open(key, "w", encoding="utf-8") as f:
+                f.write("k")
+            argv, env = build_forwarder_cmd("root", 2222, 2240, "publickey", key)
+            self.assertEqual(argv[0], "ssh")
+            self.assertNotIn("sshpass", argv)
+            self.assertEqual(argv[argv.index("-i") + 1], key)
+            self.assertIsNone(env)
+
+    def test_forwarder_cmd_missing_auth(self):
+        with self.assertRaises(ValueError):
+            build_forwarder_cmd("root", 2222, 2240, "password", "")
+        from unittest import mock
+        with mock.patch("src.vaydns.resolve_key_file", return_value=None):
+            with self.assertRaises(ValueError):
+                build_forwarder_cmd("root", 2222, 2240, "publickey", "")
+
+    def test_spawn_and_stop_forwarders_with_stub(self):
+        import time
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as tmp:
+            fake_ssh = os.path.join(tmp, "ssh")
+            with open(fake_ssh, "w", encoding="utf-8") as f:
+                f.write("#!/bin/sh\necho \"$@\" >> %s.args\nsleep 30\n" % fake_ssh)
+            os.chmod(fake_ssh, 0o755)
+            key = os.path.join(tmp, "id_ed")
+            with open(key, "w", encoding="utf-8") as f:
+                f.write("k")
+            old_path = os.environ.get("PATH", "")
+            try:
+                os.environ["PATH"] = tmp + ":" + old_path
+                with mock.patch("src.vaydns.resolve_key_file", return_value=key):
+                    argv, env = build_forwarder_cmd("root", 2222, 26440, "publickey", "")
+                self.assertEqual(argv[0], "ssh")  # resolves via PATH → stub
+                procs = spawn_forwarders([(argv, env)])
+                try:
+                    time.sleep(0.5)
+                    self.assertTrue(all(p.poll() is None for p in procs))
+                    self.assertTrue(os.path.exists("/tmp/omnitunnel-vaydns-fwd-26440.pid"))
+                    with open(fake_ssh + ".args", encoding="utf-8") as f:
+                        logged = f.read()
+                    self.assertIn("-D 127.0.0.1:26440", logged)
+                finally:
+                    stop_forwarders([26440])
+                time.sleep(0.3)
+                self.assertTrue(all(p.poll() is not None for p in procs))
+            finally:
+                os.environ["PATH"] = old_path
+
+    def test_wait_for_socks_ports(self):
+        import socket
+        from src.vaydns import wait_for_socks_ports
+        from src.ports import find_free_port
+        port = find_free_port(27100)
+        srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        srv.bind(("127.0.0.1", port))
+        srv.listen(1)
+        try:
+            # plain accept counts (no banner expected)
+            self.assertEqual(wait_for_socks_ports([port], timeout=3), [])
+            self.assertEqual(wait_for_socks_ports([27998], timeout=1), [27998])
+        finally:
+            srv.close()
 
     def test_wait_for_backends(self):
         import socket
