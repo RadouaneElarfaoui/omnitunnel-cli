@@ -86,7 +86,7 @@ class TestVaydnsLink(unittest.TestCase):
         self.assertTrue(is_vaydns_uri(link))
 
     def test_inline_pubkey_string(self):
-        key = "ssh-ed25519 AAAAtestkey user@host"
+        key = "dGVzdC12YXlkbnMtc2hhcmVkLWtleQ=="  # opaque shared key, NOT an SSH key
         link = ("vaydns://alice:pw@vay.krel.qzz.io?pubkey=" +
                 __import__("urllib.parse", fromlist=["quote"]).quote(key, safe="") +
                 "#K")
@@ -100,17 +100,17 @@ class TestVaydnsLink(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             real = os.path.join(tmp, "server.pub")
             with open(real, "w", encoding="utf-8") as f:
-                f.write("ssh-ed25519 AAAAreal")
+                f.write("cmVhbC12YXlkbnMtc2hhcmVkLWtleQ==")
             # existing file wins over inline string
             got = resolve_pubkey_file(
-                {"pubkey_file": real, "pubkey": "ssh-ed25519 AAAAinline"}, "X")
+                {"pubkey_file": real, "pubkey": "aW5saW5lLXZheWRucy1zaGFyZWQta2V5"}, "X")
             self.assertEqual(got, real)
             # inline string materializes to cfgs/vaydns/
-            got = resolve_pubkey_file({"pubkey": "ssh-ed25519 AAAAinline"}, "Test Resolve 9")
+            got = resolve_pubkey_file({"pubkey": "aW5saW5lLXZheWRucy1zaGFyZWQta2V5"}, "Test Resolve 9")
             try:
                 self.assertTrue(got.endswith(".pub"))
                 with open(got, encoding="utf-8") as f:
-                    self.assertEqual(f.read(), "ssh-ed25519 AAAAinline\n")
+                    self.assertEqual(f.read(), "aW5saW5lLXZheWRucy1zaGFyZWQta2V5\n")
             finally:
                 os.remove(got)
             # neither → ""
@@ -199,12 +199,12 @@ class TestVaydnsRuntime(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             src = os.path.join(tmp, "server.pub")
             with open(src, "w", encoding="utf-8") as f:
-                f.write("ssh-ed25519 AAAA test")
+                f.write("dGVzdC12YXlkbnMtc2hhcmVkLWtleQ==")
             dest = store_pubkey_file(src, "Test Remark 123")
             try:
                 self.assertTrue(dest.endswith(".pub"))
                 with open(dest, encoding="utf-8") as f:
-                    self.assertEqual(f.read(), "ssh-ed25519 AAAA test")
+                    self.assertEqual(f.read(), "dGVzdC12YXlkbnMtc2hhcmVkLWtleQ==")
             finally:
                 os.remove(dest)
 
