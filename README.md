@@ -97,6 +97,7 @@ Connection modes (`connection_mode`):
 * `2` — **SNI Only**: SSL/TLS SNI spoofing.
 * `3` — **Payload + SNI**: maximum masking.
 * `vaydns` — **VayDNS**: N balanced DNS-tunneled SSH backends (needs `vaydns-client` + `vaydns://` profile).
+  Example: `vaydns://alice:s3cr3t@vay.krel.qzz.io?tcp=8.8.8.8:53&pubkey=<shared-key>&instances=3#Home`
 
 ---
 
