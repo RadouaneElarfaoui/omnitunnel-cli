@@ -245,6 +245,25 @@ def find_profile(name):
     return None
 
 
+# Sections that only make sense for SSH modes. Dropped when a v2ray
+# profile becomes active so active.ot holds that config — not stale SSH values.
+SSH_ONLY_SECTIONS = ("ssh", "Payload", "sni")
+
+
+def activate_v2ray_config(config, json_path, remark):
+    """Point an active config at a v2ray profile, dropping SSH-only sections."""
+    for section in ("mode", "v2ray"):
+        if not config.has_section(section):
+            config.add_section(section)
+    config.set('mode', 'connection_mode', 'v2ray')
+    config.set('v2ray', 'v2ray_config', json_path)
+    config.set('v2ray', 'active_remark', remark)
+    for section in SSH_ONLY_SECTIONS:
+        if config.has_section(section):
+            config.remove_section(section)
+    return config
+
+
 def load_profile(name):
     """Load a saved profile by name and set as active. Returns True on success."""
     path = find_profile(name)
@@ -253,15 +272,8 @@ def load_profile(name):
         return False
     base = os.path.splitext(os.path.basename(path))[0]
     if path.endswith('.json'):
-        # v2ray profile — set via configparser directly (avoid circular import)
-        config = read_config()
-        if not config.has_section('mode'):
-            config.add_section('mode')
-        if not config.has_section('v2ray'):
-            config.add_section('v2ray')
-        config.set('mode', 'connection_mode', 'v2ray')
-        config.set('v2ray', 'v2ray_config', path)
-        config.set('v2ray', 'active_remark', base)
+        # v2ray profile — point active config at it, drop SSH leftovers.
+        config = activate_v2ray_config(read_config(), path, base)
         write_config(config)
     else:
         config_dict, _ = import_profile_from_omni(path)

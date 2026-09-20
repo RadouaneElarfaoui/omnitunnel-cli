@@ -12,7 +12,7 @@ from src.menu_common import (
     read_config, write_config, print_current_status,
     frame, cached_config, cached_snapshot,
     STATUS_BREAK, STATUS_STAY, run_menu, pick_list, run_as_root,
-    input_editable, stay_after, break_after,
+    input_editable, stay_after, break_after, activate_v2ray_config,
 )
 import functools
 
@@ -310,9 +310,7 @@ def menu_import_v2ray(mode):
 
         activate = input("\nActivate this V2Ray profile as current connection mode now? (Y/n): ").strip().lower()
         if activate != 'n':
-            _set_config('mode', 'connection_mode', 'v2ray')
-            _set_config('v2ray', 'v2ray_config', target_path)
-            _set_config('v2ray', 'active_remark', remark)
+            write_config(activate_v2ray_config(read_config(), target_path, remark))
             print(f"\n{C_GREEN}Connection mode set to V2Ray Profile ({remark})!{C_RESET}")
     except Exception as e:
         print(f"\n{C_RED}Error parsing share link: {e}{C_RESET}")
@@ -505,9 +503,8 @@ def _load_config(mode, silent=False):
         src_path = os.path.join(SAVED_CONFIGS_DIR, target_file)
         try:
             if target_file.endswith('.json'):
-                _set_config('mode', 'connection_mode', 'v2ray')
-                _set_config('v2ray', 'v2ray_config', src_path)
-                _set_config('v2ray', 'active_remark', target_file[:-5])
+                write_config(activate_v2ray_config(
+                    read_config(), src_path, target_file[:-5]))
                 if not silent:
                     print(f"\n{C_GREEN}V2Ray/Xray Profile '{target_file[:-5]}' loaded as active!{C_RESET}")
             elif target_file.endswith('.ot'):
