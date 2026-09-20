@@ -257,8 +257,14 @@ fi
 
 if [ "$VAYDNS_ACTIVE" = "1" ]; then
     if [ "$OUTPUT_MODE" = "socks" ]; then
-        echo "✔ Starting $ENGINE Proxy Engine (VayDNS ×$(cat "$VAYDNS_PORTS_FILE" 2>/dev/null | wc -w) backend(s))..."
-        echo "  SOCKS5 → 0.0.0.0:$OMNI_SOCKS_IN_PORT (balanced over ssh -D 127.0.0.1:$(cat "$VAYDNS_SOCKS_FILE" 2>/dev/null | tr ' ' ','))"
+        VAYDNS_N="$(cat "$VAYDNS_SOCKS_FILE" 2>/dev/null | wc -w)"
+        if [ "$VAYDNS_N" = "1" ]; then
+            echo "✔ Starting $ENGINE Proxy Engine (VayDNS, single backend)..."
+            echo "  SOCKS5 → 0.0.0.0:$OMNI_SOCKS_IN_PORT (direct via ssh -D 127.0.0.1:$(cat "$VAYDNS_SOCKS_FILE" 2>/dev/null))"
+        else
+            echo "✔ Starting $ENGINE Proxy Engine (VayDNS ×${VAYDNS_N} backend(s))..."
+            echo "  SOCKS5 → 0.0.0.0:$OMNI_SOCKS_IN_PORT (balanced over ssh -D 127.0.0.1:$(cat "$VAYDNS_SOCKS_FILE" 2>/dev/null | tr ' ' ','))"
+        fi
         echo "  HTTP   → 0.0.0.0:$OMNI_HTTP_IN_PORT"
         echo "  config → $CONFIG_FILE"
     else
