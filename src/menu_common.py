@@ -29,6 +29,7 @@ MODE_NAMES = {
     '1': 'HTTP → SSH',
     '2': 'TLS → SSH',
     '3': 'TLS → HTTP → SSH (https)',
+    'vaydns': 'VayDNS (DNS-tunneled SSH ×N, balanced)',
     'v2ray': 'V2Ray / Sing-Box'
 }
 
@@ -91,6 +92,10 @@ def status_snapshot(config):
     payload = config.get('Payload', 'payload', fallback='None')
     v2ray_config = config.get('v2ray', 'v2ray_config', fallback='None')
     v2ray_remark = config.get('v2ray', 'active_remark', fallback='None')
+    vaydns_domain = config.get('vaydns', 'domain', fallback='None')
+    vaydns_tcp = config.get('vaydns', 'tcp', fallback='None')
+    vaydns_pubkey = config.get('vaydns', 'pubkey_file', fallback='None')
+    vaydns_instances = config.get('vaydns', 'instances', fallback='None')
     return {
         'mode': mode,
         'mode_name': get_mode_name(mode),
@@ -108,6 +113,10 @@ def status_snapshot(config):
         'payload': payload,
         'v2ray_config': v2ray_config,
         'v2ray_remark': v2ray_remark,
+        'vaydns_domain': vaydns_domain,
+        'vaydns_tcp': vaydns_tcp,
+        'vaydns_pubkey': vaydns_pubkey,
+        'vaydns_instances': vaydns_instances,
     }
 
 
@@ -309,6 +318,16 @@ def print_current_status(config):
         if cfg_path and cfg_path != 'None' and cfg_path != remark:
             short = cfg_path if len(cfg_path) <= 40 else '…' + cfg_path[-39:]
             print(f"  {C_BOLD}{'V2Ray Config:':<{W}}{C_RESET} {C_YELLOW}{short}{C_RESET}")
+        print(f"  {C_BOLD}{'VPN Engine:':<{W}}{C_RESET} {C_CYAN}{s['engine_label']}{C_RESET}")
+        print(f"  {C_BOLD}{'Sing-Box Log:':<{W}}{C_RESET} {C_CYAN}{s['sb_log_level']}{C_RESET}")
+        print(f"{C_CYAN}-----------------------------------------------------------{C_RESET}")
+        return
+    # vaydns mode — DNS-tunneled backends reuse the ssh flow's credentials
+    if mode == 'vaydns':
+        print(f"  {C_BOLD}{'VayDNS Domain:':<{W}}{C_RESET} {C_YELLOW}{s['vaydns_domain']}{C_RESET}")
+        print(f"  {C_BOLD}{'VayDNS Transport:':<{W}}{C_RESET} {C_YELLOW}{s['vaydns_tcp']}{C_RESET} × {s['vaydns_instances']} instance(s)")
+        print(f"  {C_BOLD}{'VayDNS Pubkey:':<{W}}{C_RESET} {C_YELLOW}{s['vaydns_pubkey']}{C_RESET}")
+        print(f"  {C_BOLD}{'SSH User:':<{W}}{C_RESET} {C_YELLOW}{s['ssh_user']}{C_RESET} (shared ssh flow)")
         print(f"  {C_BOLD}{'VPN Engine:':<{W}}{C_RESET} {C_CYAN}{s['engine_label']}{C_RESET}")
         print(f"  {C_BOLD}{'Sing-Box Log:':<{W}}{C_RESET} {C_CYAN}{s['sb_log_level']}{C_RESET}")
         print(f"{C_CYAN}-----------------------------------------------------------{C_RESET}")

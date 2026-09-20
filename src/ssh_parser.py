@@ -204,14 +204,19 @@ def parse_share_link(uri: str) -> tuple:
     """Unified entry point for every share-link scheme.
 
     Returns ("ssh", config_dict, remark) for ssh:// links (config_dict in
-    `.ot` section layout, ready to merge into the active profile) or
-    ("v2ray", outbound_dict, remark) for vless/vmess/trojan/ss/hy2 links
-    (outbound_dict in sing-box outbound layout).
+    `.ot` section layout, ready to merge into the active profile),
+    ("vaydns", config_dict, remark) for vaydns:// links (same layout,
+    mode/vaydns sections), or ("v2ray", outbound_dict, remark) for
+    vless/vmess/trojan/ss/hy2 links (outbound_dict in sing-box layout).
     """
     cleaned = uri.strip()
     if is_ssh_uri(cleaned):
         config_dict, remark = parse_ssh_uri(cleaned)
         return ("ssh", config_dict, remark)
+    from src.vaydns import is_vaydns_uri, parse_vaydns_uri
+    if is_vaydns_uri(cleaned):
+        config_dict, remark = parse_vaydns_uri(cleaned)
+        return ("vaydns", config_dict, remark)
     from src.v2ray_parser import parse_v2ray_uri
     outbound, remark = parse_v2ray_uri(cleaned)
     return ("v2ray", outbound, remark)
@@ -228,4 +233,4 @@ if __name__ == "__main__":
             print(f"✕ Parsing error: {e}")
             sys.exit(1)
     else:
-        print("Usage: python3 src/ssh_parser.py <ssh://...|vless://|vmess://|trojan://|ss://|hy2://>")
+        print("Usage: python3 src/ssh_parser.py <ssh://...|vaydns://...|vless://|vmess://|trojan://|ss://|hy2://>")

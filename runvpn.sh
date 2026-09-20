@@ -92,6 +92,9 @@ pkill -f "sshpass.*ssh" 2>/dev/null || true
 pkill redsocks 2>/dev/null || true
 pkill dns2socks 2>/dev/null || true
 pkill sing-box 2>/dev/null || true
+# vaydns backends (all of them — TUN is single-instance)
+pkill -f "vaydns-client.*-listen" 2>/dev/null || true
+python3 "$PROJECT_DIR/src/vaydns.py" down 2>/dev/null || true
 pkill -f "python3.*main.py" 2>/dev/null || true
 echo -e "[+] DONE ${SCOLOR}"
 }
@@ -111,6 +114,10 @@ if [ -n "${OMNI_INJECTOR_PORT:-}" ]; then
 fi
 if [ -n "${OMNI_SOCKS_IN_PORT:-}" ]; then
     pkill -f "sing-box.*singbox_config_${OMNI_SOCKS_IN_PORT}.json" 2>/dev/null || true
+fi
+# vaydns backends owned by this instance only (parallel-safe)
+if [ -n "${OMNI_VAYDNS_PORTS:-}" ]; then
+    python3 "$PROJECT_DIR/src/vaydns.py" down --ports "$OMNI_VAYDNS_PORTS" 2>/dev/null || true
 fi
 pkill -P $$ 2>/dev/null || true
 echo -e "[+] DONE ${SCOLOR}"
@@ -139,8 +146,8 @@ fi
 
 function serverlistening() {
     localport="$1"
-    # Only start injector when needed (modes 1/2/3); v2ray and direct 0 skip
-    if [ "$mode" = "v2ray" ] || [ "$mode" = "0" ]; then
+    # Only start injector when needed (modes 1/2/3); v2ray, vaydns and direct 0 skip
+    if [ "$mode" = "v2ray" ] || [ "$mode" = "vaydns" ] || [ "$mode" = "0" ]; then
         return 0
     fi
     OMNI_INJECTOR_PORT="$localport" python3 "$PROJECT_DIR/main.py" $localport &
@@ -152,9 +159,10 @@ function connect() {
         # re-read mode per iteration (instance snapshot in proxy mode,
         # global active.ot in TUN mode)
         cur_mode=$(python3 -c "import sys; sys.path.insert(0, '$PROJECT_DIR'); from src.menu_common import read_config, status_snapshot; print(status_snapshot(read_config())['mode'])" 2>/dev/null || echo "$mode")
-        # v2ray has no SSH leg: hand straight to the sing-box launcher
-        # (same as the TUN path) instead of ssh.py, which only speaks SSH.
-        if [ "$cur_mode" = "v2ray" ]; then
+        # v2ray/vaydns have no SSH leg: hand straight to the sing-box
+        # launcher (same as the TUN path) instead of ssh.py, which only
+        # speaks SSH. The launcher owns vaydns-client backends end to end.
+        if [ "$cur_mode" = "v2ray" ] || [ "$cur_mode" = "vaydns" ]; then
             exec sudo -E bash "$PROJECT_DIR/vpn/singbox_proxification"
         fi
 	if [ "$cur_mode" = "0" ]
@@ -165,8 +173,8 @@ function connect() {
 	fi
 }
 
-if [ "$mode" = "v2ray" ]; then
-    echo -e "${GREEN}[+] Launching Sing-Box TUN Engine with V2Ray/Xray Profile...${SCOLOR}"
+if [ "$mode" = "v2ray" ] || [ "$mode" = "vaydns" ]; then
+    echo -e "${GREEN}[+] Launching Sing-Box Engine with ${mode} Profile...${SCOLOR}"
     exec sudo -E bash "$PROJECT_DIR/vpn/singbox_proxification"
     exit 0
 fi

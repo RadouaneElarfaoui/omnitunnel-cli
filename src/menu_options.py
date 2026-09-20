@@ -27,6 +27,10 @@ from src.omni_profile import (
 )
 from src.v2ray_parser import generate_v2ray_singbox_config
 from src.ssh_parser import parse_share_link, ssh_config_to_uri
+from src.vaydns import (parse_vaydns_uri, vaydns_config_to_uri,
+                        activate_vaydns_config, store_pubkey_file,
+                        find_vaydns_binary, VAYDNS_INSTALL_HINT,
+                        _parse_instances as _coerce_instances)
 from src.singbox_adapter import find_singbox_lx_binary
 
 LX_INSTALL_ONELINER = (
@@ -255,10 +259,60 @@ def menu_share_ssh(mode):
     input("\nPress Enter to continue...")
 
 
+def _import_vaydns_profile(config_dict, remark, mode):
+    """Activate a vaydns:// profile: merge into active.ot, store pubkey."""
+    pubkey_src = (config_dict.get("vaydns", {}) or {}).get("pubkey_file", "")
+    if pubkey_src and os.path.exists(pubkey_src):
+        try:
+            stored = store_pubkey_file(pubkey_src, remark)
+            config_dict["vaydns"]["pubkey_file"] = stored
+            print(f"  {C_CYAN}pubkey stored: {stored}{C_RESET}")
+        except Exception as e:
+            print(f"  {C_YELLOW}Could not store pubkey ({e}) — keeping path as-is.{C_RESET}")
+    elif pubkey_src:
+        print(f"  {C_YELLOW}pubkey file not found: {pubkey_src} — fix via Edit.{C_RESET}")
+    write_config(activate_vaydns_config(read_config(), config_dict))
+    print(f"\n{C_GREEN}VayDNS Profile '{remark}' imported as active configuration!{C_RESET}")
+    print(f"  {C_CYAN}SSH credentials reused from the shared ssh flow.{C_RESET}")
+    if not find_vaydns_binary():
+        print(f"\n{C_YELLOW}{VAYDNS_INSTALL_HINT}{C_RESET}")
+    save = input("\nSave to profile library as well? (Y/n): ").strip().lower()
+    if save != 'n':
+        ensure_saved_configs_dir()
+        profile_name = clean_filename(remark) or "VayDNS_Profile"
+        lib_path = os.path.join(SAVED_CONFIGS_DIR, f"{profile_name}.ot")
+        try:
+            export_profile_to_omni(read_config(), profile_name=profile_name, output_path=lib_path)
+            print(f"  {C_GREEN}Saved to library as '{profile_name}'!{C_RESET}")
+        except Exception as e:
+            print(f"  {C_RED}Error saving to library: {e}{C_RESET}")
+
+
+def menu_share_vaydns(mode):
+    """Print the active config as a vaydns:// link (SSH creds included)."""
+    _frame()
+    try:
+        config = read_config()
+    except Exception as e:
+        print(f"\n{C_RED}Error reading configuration: {e}{C_RESET}")
+        input("\nPress Enter to continue...")
+        return
+    label = input("Label for this link (optional, becomes #Remark): ").strip()
+    try:
+        link = vaydns_config_to_uri(config, remark=label)
+    except ValueError as e:
+        print(f"\n{C_RED}{e}{C_RESET}")
+        input("\nPress Enter to continue...")
+        return
+    print(f"\n{C_GREEN}VayDNS share link:{C_RESET}\n  {C_CYAN}{link}{C_RESET}\n")
+    print(f"{C_YELLOW}Note: the receiver needs the same server.pub beside the link.{C_RESET}")
+    input("\nPress Enter to continue...")
+
+
 def menu_import_v2ray(mode):
     _frame()
-    print(f"\n{C_BOLD}Import Share Link (SSH, VLESS, VMess, Trojan, SS, Hy2):{C_RESET}\n")
-    print("Paste your share URI (e.g. ssh://..., vless://..., vmess://..., trojan://..., ss://..., hy2://...):")
+    print(f"\n{C_BOLD}Import Share Link (SSH, VayDNS, VLESS, VMess, Trojan, SS, Hy2):{C_RESET}\n")
+    print("Paste your share URI (e.g. ssh://..., vaydns://..., vless://..., vmess://..., trojan://..., ss://..., hy2://...):")
     print("(Or enter path to a text file containing the URI link)\n")
 
     input_str = input(f"{C_BOLD}Share Link or File Path: {C_RESET}").strip()
@@ -280,6 +334,10 @@ def menu_import_v2ray(mode):
         kind, data, remark = parse_share_link(input_str)
         if kind == "ssh":
             _import_ssh_profile(data, remark, mode)
+            input("\nPress Enter to continue...")
+            return
+        if kind == "vaydns":
+            _import_vaydns_profile(data, remark, mode)
             input("\nPress Enter to continue...")
             return
         outbound, remark = data, remark
@@ -420,8 +478,9 @@ def menu_import_omni_portal(mode):
 def menu_import_main(mode):
     options = [
         ('1', '.ot File (portal file picker)', stay_after(lambda: menu_import_omni_portal(mode))),
-        ('2', 'Share Link (ssh, vless, vmess, trojan, ss, hy2)', stay_after(lambda: menu_import_v2ray(mode))),
+        ('2', 'Share Link (ssh, vaydns, vless, vmess, trojan, ss, hy2)', stay_after(lambda: menu_import_v2ray(mode))),
         ('3', 'Share current config as ssh:// link', stay_after(lambda: menu_share_ssh(mode))),
+        ('4', 'Share current config as vaydns:// link', stay_after(lambda: menu_share_vaydns(mode))),
         ('B', '← Back', STATUS_BREAK),
     ]
     run_menu("Import / Share  —  choose source", options, mode=mode)
@@ -574,6 +633,7 @@ def menu_edit_connection_mode(mode):
         ('1', _lab('1', 'HTTP → SSH'), break_after(functools.partial(_set_mode, '1'))),
         ('2', _lab('2', 'TLS → SSH'), break_after(functools.partial(_set_mode, '2'))),
         ('3', _lab('3', 'TLS → HTTP → SSH (https)'), break_after(functools.partial(_set_mode, '3'))),
+        ('4', _lab('vaydns', 'VayDNS (DNS-tunneled SSH ×N, balanced)'), break_after(functools.partial(_set_mode, 'vaydns'))),
         ('B', '← Back', STATUS_BREAK),
     ]
     run_menu("Select Connection Mode", options, mode=mode)
@@ -881,6 +941,21 @@ def menu_edit(mode):
         base = os.path.basename(s['v2ray_config']) if s['v2ray_config'] not in ('None', '') else '—'
         return f"V2Ray Profile   {C_YELLOW}{s['v2ray_remark']}{C_RESET} ({base})"
 
+    def lab_vaydns_summary():
+        s = cached_snapshot()
+        return f"VayDNS Domain   {C_YELLOW}{s['vaydns_domain']}{C_RESET} ({s['vaydns_tcp']} × {s['vaydns_instances']})"
+
+    def _edit_vaydns_instances():
+        cur = cached_config().get('vaydns', 'instances', fallback='2')
+        raw = _input_prefilled("Edit Instances [1..16]: ", cur).strip()
+        if not raw or raw == cur:
+            return
+        try:
+            _set_config('vaydns', 'instances', str(_coerce_instances(raw)))
+        except ValueError as e:
+            print(f"\n{C_RED}{e}{C_RESET}")
+            input("\nPress Enter to continue...")
+
     # Actions: each line edits the underlying field(s); composite lines
     # open the focused inline submenu so you still cycle the same preview.
     # VPN Engine / Log Level at bottom (rarely changed) — mirrors
@@ -895,6 +970,22 @@ def menu_edit(mode):
             ('8', lab_engine,     stay_after(functools.partial(menu_edit_engine, mode))),
             ('9', lab_log,        stay_after(functools.partial(_log_level_menu, mode))),
             ('0', lab_open_raw,   stay_after(_open_active_config)),
+            ('B', '← Back', STATUS_BREAK),
+        ]
+    elif cached_snapshot()['mode'] == 'vaydns':
+        # vaydns: transport fields + shared ssh credentials (backends reuse
+        # the ssh flow); proxy/payload/SNI rows don't apply.
+        options = [
+            ('1', lab_mode,           stay_after(functools.partial(menu_edit_connection_mode, mode))),
+            ('2', lab_vaydns_summary, stay_after(functools.partial(_edit_val, 'vaydns', 'domain', 'VayDNS Domain'))),
+            ('3', lambda: f"Transport     {C_YELLOW}{cached_snapshot()['vaydns_tcp']}{C_RESET}", stay_after(functools.partial(_edit_val, 'vaydns', 'tcp', 'VayDNS Transport [host:port]'))),
+            ('4', lambda: f"Pubkey File   {C_YELLOW}{cached_snapshot()['vaydns_pubkey']}{C_RESET}", stay_after(functools.partial(_edit_val, 'vaydns', 'pubkey_file', 'VayDNS Pubkey File'))),
+            ('5', lambda: f"Instances     {C_YELLOW}{cached_snapshot()['vaydns_instances']}{C_RESET}", stay_after(_edit_vaydns_instances)),
+            ('6', lab_ssh_server,     stay_after(functools.partial(menu_edit_ssh, mode))),
+            ('7', lambda: f"Re-import Link  {C_CYAN}paste a new share URI{C_RESET}", stay_after(lambda: menu_import_v2ray(mode))),
+            ('8', lab_engine,         stay_after(functools.partial(menu_edit_engine, mode))),
+            ('9', lab_log,            stay_after(functools.partial(_log_level_menu, mode))),
+            ('0', lab_open_raw,       stay_after(_open_active_config)),
             ('B', '← Back', STATUS_BREAK),
         ]
     else:

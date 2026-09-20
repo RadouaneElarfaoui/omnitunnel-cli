@@ -93,6 +93,7 @@ Connection modes (`connection_mode`):
 * `1` — **Payload Only**: HTTP header injection via proxy.
 * `2` — **SNI Only**: SSL/TLS SNI spoofing.
 * `3` — **Payload + SNI**: maximum masking.
+* `vaydns` — **VayDNS**: N DNS-tunneled SSH backends (`vaydns-client`), auto-balanced. Needs the `vaydns-client` binary on PATH plus a `[vaydns]` section (`domain`, `tcp`, `pubkey_file`, `instances`); import via `vaydns://user:pass@domain?tcp=8.8.8.8:53&pubkey-file=server.pub&instances=3#Remark`. SSH credentials are reused from the ssh flow.
 
 ---
 

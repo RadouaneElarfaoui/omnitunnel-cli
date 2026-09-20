@@ -48,6 +48,20 @@ else
     CONFIG_FILE="$PROJECT_DIR/cfgs/singbox_config.json"
 fi
 
+# VayDNS mode: backend listen ports live in a file (per-instance in proxy
+# mode) so the EXIT trap can stop exactly this instance's clients.
+if [ "${OUTPUT_MODE:-tun}" = "socks" ]; then
+    VAYDNS_PORTS_FILE="/tmp/omnitunnel-vaydns-ports-${OMNI_SOCKS_IN_PORT}.json"
+else
+    VAYDNS_PORTS_FILE="/tmp/omnitunnel-vaydns-ports-tun.json"
+fi
+vaydns_cleanup() {
+    if [ -f "$VAYDNS_PORTS_FILE" ]; then
+        python3 "$PROJECT_DIR/src/vaydns.py" down --ports "$(cat "$VAYDNS_PORTS_FILE" 2>/dev/null)" 2>/dev/null || true
+        rm -f "$VAYDNS_PORTS_FILE" 2>/dev/null || true
+    fi
+}
+
 # Generate fresh sing-box JSON configuration from unified active.ot
 OUTPUT_MODE="${OUTPUT_MODE:-tun}"
 OMNI_SSH_SOCKS_PORT="$OMNI_SSH_SOCKS_PORT" OMNI_SOCKS_IN_PORT="$OMNI_SOCKS_IN_PORT" OMNI_HTTP_IN_PORT="$OMNI_HTTP_IN_PORT" python3 -c "
@@ -96,11 +110,50 @@ if mode == 'v2ray':
         sb_cfg = generate_singbox_config(config, socks_port=ssh_socks, output_mode=output_mode,
                                          socks_in_port=socks_in, http_in_port=http_in)
         save_singbox_config(sb_cfg, config_file)
+elif mode == 'vaydns':
+    # VayDNS: spawn N backend clients first (fail closed without binary /
+    # pubkey), then build the ssh+balance config over their listen ports.
+    from src.vaydns import (generate_vaydns_singbox_config, allocate_vaydns_ports,
+                            spawn_clients, find_vaydns_binary, VAYDNS_INSTALL_HINT)
+    binary = find_vaydns_binary()
+    if not binary:
+        print(f'✕ {VAYDNS_INSTALL_HINT}', flush=True)
+        raise SystemExit(1)
+    domain = config.get('vaydns', 'domain', fallback='')
+    tcp = config.get('vaydns', 'tcp', fallback='8.8.8.8:53') or '8.8.8.8:53'
+    pubkey = config.get('vaydns', 'pubkey_file', fallback='')
+    try:
+        instances = config.get('vaydns', 'instances', fallback='2')
+    except:
+        instances = '2'
+    if not domain:
+        print('✕ VayDNS domain is not configured (menu: Edit)', flush=True)
+        raise SystemExit(1)
+    if not pubkey or not os.path.exists(pubkey):
+        print('✕ VayDNS pubkey file not found:', pubkey or '(unset)', '(menu: Edit)', flush=True)
+        raise SystemExit(1)
+    user = config.get('ssh', 'username', fallback='')
+    password = config.get('ssh', 'password', fallback='')
+    log_level = config.get('engine', 'singbox_log_level', fallback='warn')
+    if log_level not in ('info', 'debug', 'warn', 'error'):
+        log_level = 'warn'
+    vaydns_ports = allocate_vaydns_ports(instances)
+    spawn_clients(binary, tcp, pubkey, domain, vaydns_ports)
+    with open('$VAYDNS_PORTS_FILE', 'w', encoding='utf-8') as f:
+        f.write(' '.join(str(p) for p in vaydns_ports))
+    ports_str = ', 127.0.0.1:'.join(str(p) for p in vaydns_ports)
+    print('Spawned %d vaydns-client backend(s) on 127.0.0.1:%s' % (len(vaydns_ports), ports_str), flush=True)
+    sb_cfg = generate_vaydns_singbox_config(user, password, vaydns_ports,
+                                            output_mode=output_mode,
+                                            socks_in_port=socks_in,
+                                            http_in_port=http_in,
+                                            log_level=log_level)
+    save_singbox_config(sb_cfg, config_file)
 else:
     sb_cfg = generate_singbox_config(config, socks_port=ssh_socks, output_mode=output_mode,
                                      socks_in_port=socks_in, http_in_port=http_in)
     save_singbox_config(sb_cfg, config_file)
-"
+" || exit 1
 
 # Bake outbound server IPs: resolve domain endpoints via system DNS at
 # launch so the tunnel never has to resolve its own server through itself
@@ -144,6 +197,37 @@ if [ "$ENGINE" != "singbox-lx" ]; then
         echo "  curl -fsSL https://raw.githubusercontent.com/RadouaneElarfaoui/omnitunnel-cli/main/install-singbox-lx.sh | sudo bash"
         exit 1
     fi
+fi
+
+# VayDNS owns child processes (backend clients) — no exec here: run
+# sing-box in the foreground under a trap so the backends die with it.
+# Every other mode keeps the legacy exec tail below.
+VAYDNS_ACTIVE=0
+MODE_NOW="$(python3 -c 'import sys; sys.path.insert(0, "'"$PROJECT_DIR"'"); from src.menu_common import read_config, status_snapshot; print(status_snapshot(read_config())["mode"])' 2>/dev/null)"
+if [ "$MODE_NOW" = "vaydns" ]; then
+    VAYDNS_ACTIVE=1
+    trap vaydns_cleanup EXIT INT TERM
+fi
+
+if [ "$VAYDNS_ACTIVE" = "1" ]; then
+    if [ "$OUTPUT_MODE" = "socks" ]; then
+        echo "✔ Starting $ENGINE Proxy Engine (VayDNS ×$(cat "$VAYDNS_PORTS_FILE" 2>/dev/null | wc -w) backends)..."
+        echo "  SOCKS5 → 0.0.0.0:$OMNI_SOCKS_IN_PORT (balanced over 127.0.0.1:$(cat "$VAYDNS_PORTS_FILE" 2>/dev/null | tr ' ' ','))"
+        echo "  HTTP   → 0.0.0.0:$OMNI_HTTP_IN_PORT"
+        echo "  config → $CONFIG_FILE"
+    else
+        echo "✔ Starting $ENGINE High-Performance TUN Engine (VayDNS)..."
+    fi
+    "$SINGBOX_BIN" run -c "$CONFIG_FILE" 2>&1 | python3 -c "
+import sys
+sys.path.insert(0, '$PROJECT_DIR')
+from src.logger import log_singbox
+for line in sys.stdin:
+    l = line.strip()
+    if l:
+        log_singbox(l)
+"
+    exit $?
 fi
 
 if [ "$OUTPUT_MODE" = "socks" ]; then
