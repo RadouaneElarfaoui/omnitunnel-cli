@@ -29,6 +29,7 @@ from src.v2ray_parser import generate_v2ray_singbox_config
 from src.ssh_parser import parse_share_link, ssh_config_to_uri
 from src.vaydns import (parse_vaydns_uri, vaydns_config_to_uri,
                         activate_vaydns_config, store_pubkey_file,
+                        materialize_pubkey,
                         find_vaydns_binary, VAYDNS_INSTALL_HINT,
                         _parse_instances as _coerce_instances)
 from src.singbox_adapter import find_singbox_lx_binary
@@ -261,7 +262,8 @@ def menu_share_ssh(mode):
 
 def _import_vaydns_profile(config_dict, remark, mode):
     """Activate a vaydns:// profile: merge into active.ot, store pubkey."""
-    pubkey_src = (config_dict.get("vaydns", {}) or {}).get("pubkey_file", "")
+    vay = config_dict.get("vaydns", {}) or {}
+    pubkey_src = vay.get("pubkey_file", "")
     if pubkey_src and os.path.exists(pubkey_src):
         try:
             stored = store_pubkey_file(pubkey_src, remark)
@@ -271,6 +273,13 @@ def _import_vaydns_profile(config_dict, remark, mode):
             print(f"  {C_YELLOW}Could not store pubkey ({e}) — keeping path as-is.{C_RESET}")
     elif pubkey_src:
         print(f"  {C_YELLOW}pubkey file not found: {pubkey_src} — fix via Edit.{C_RESET}")
+    if vay.get("pubkey", "").strip():
+        try:
+            stored = materialize_pubkey(vay["pubkey"], remark)
+            config_dict["vaydns"]["pubkey_file"] = stored
+            print(f"  {C_CYAN}inline pubkey written: {stored}{C_RESET}")
+        except Exception as e:
+            print(f"  {C_YELLOW}Could not write pubkey ({e}).{C_RESET}")
     write_config(activate_vaydns_config(read_config(), config_dict))
     print(f"\n{C_GREEN}VayDNS Profile '{remark}' imported as active configuration!{C_RESET}")
     print(f"  {C_CYAN}SSH credentials reused from the shared ssh flow.{C_RESET}")

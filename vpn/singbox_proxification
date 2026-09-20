@@ -114,14 +114,15 @@ elif mode == 'vaydns':
     # VayDNS: spawn N backend clients first (fail closed without binary /
     # pubkey), then build the ssh+balance config over their listen ports.
     from src.vaydns import (generate_vaydns_singbox_config, allocate_vaydns_ports,
-                            spawn_clients, find_vaydns_binary, VAYDNS_INSTALL_HINT)
+                            spawn_clients, find_vaydns_binary, VAYDNS_INSTALL_HINT,
+                            resolve_pubkey_file)
     binary = find_vaydns_binary()
     if not binary:
         print(f'✕ {VAYDNS_INSTALL_HINT}', flush=True)
         raise SystemExit(1)
     domain = config.get('vaydns', 'domain', fallback='')
     tcp = config.get('vaydns', 'tcp', fallback='8.8.8.8:53') or '8.8.8.8:53'
-    pubkey = config.get('vaydns', 'pubkey_file', fallback='')
+    pubkey = resolve_pubkey_file(dict(config['vaydns']) if config.has_section('vaydns') else {}, domain or 'vaydns')
     try:
         instances = config.get('vaydns', 'instances', fallback='2')
     except:
@@ -129,8 +130,8 @@ elif mode == 'vaydns':
     if not domain:
         print('✕ VayDNS domain is not configured (menu: Edit)', flush=True)
         raise SystemExit(1)
-    if not pubkey or not os.path.exists(pubkey):
-        print('✕ VayDNS pubkey file not found:', pubkey or '(unset)', '(menu: Edit)', flush=True)
+    if not pubkey:
+        print('✕ VayDNS pubkey is not configured (menu: Edit or re-import link)', flush=True)
         raise SystemExit(1)
     user = config.get('ssh', 'username', fallback='')
     password = config.get('ssh', 'password', fallback='')

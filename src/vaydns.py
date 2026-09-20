@@ -29,6 +29,8 @@ Format:
 Query params (all optional):
     tcp         DNS transport endpoint host:port (default: 8.8.8.8:53)
     pubkey-file path to server.pub (copied into cfgs/vaydns/ on import)
+    pubkey      inline server.pub content (URL-encoded; materialized to
+                cfgs/vaydns/ on import and at launch)
     instances   backend count 1..16 (default: 2)
 
 The SSH userinfo is the SAME credential as the ssh flow — importing a
@@ -107,6 +109,7 @@ def parse_vaydns_uri(uri: str) -> tuple:
     if ":" not in tcp:
         raise ValueError(f"Invalid tcp={tcp!r} (expected host:port)")
     pubkey_file = _one("pubkey-file", "").strip()
+    pubkey = _one("pubkey", "").strip()
     instances = _parse_instances(_one("instances", DEFAULT_INSTANCES))
 
     config_dict = {
@@ -116,6 +119,7 @@ def parse_vaydns_uri(uri: str) -> tuple:
             "domain": domain,
             "tcp": tcp,
             "pubkey_file": pubkey_file,
+            "pubkey": pubkey,
             "instances": str(instances),
         },
     }
@@ -143,6 +147,7 @@ def vaydns_config_to_uri(config_input, remark: str = "") -> str:
         raise ValueError("Cannot share: VayDNS domain is not configured")
     tcp = str(vay.get("tcp", DEFAULT_TCP)).strip() or DEFAULT_TCP
     pubkey_file = str(vay.get("pubkey_file", "")).strip()
+    pubkey = str(vay.get("pubkey", "")).strip()
     instances = _parse_instances(vay.get("instances", DEFAULT_INSTANCES))
 
     ssh = cfg.get("ssh", {})
@@ -158,6 +163,8 @@ def vaydns_config_to_uri(config_input, remark: str = "") -> str:
         query.append(f"tcp={urllib.parse.quote(tcp, safe='')}")
     if pubkey_file and pubkey_file not in ("None", "—"):
         query.append(f"pubkey-file={urllib.parse.quote(pubkey_file, safe='')}")
+    if pubkey and pubkey not in ("None", "—"):
+        query.append(f"pubkey={urllib.parse.quote(pubkey, safe='')}")
     if instances != DEFAULT_INSTANCES:
         query.append(f"instances={instances}")
 
@@ -362,6 +369,35 @@ def store_pubkey_file(src_path, remark) -> str:
     dest = os.path.join(dest_dir, f"{name}.pub")
     shutil.copyfile(src_path, dest)
     return dest
+
+
+def materialize_pubkey(pubkey_str, name) -> str:
+    """Write an inline pubkey string to cfgs/vaydns/ so the binary gets
+    its -pubkey-file. Returns the written path."""
+    from src.paths import PROJECT_DIR
+    from src.menu_common import clean_filename
+    dest_dir = os.path.join(PROJECT_DIR, "cfgs", "vaydns")
+    os.makedirs(dest_dir, exist_ok=True)
+    safe = clean_filename(name) or "vaydns"
+    dest = os.path.join(dest_dir, f"{safe}.pub")
+    with open(dest, "w", encoding="utf-8") as f:
+        f.write(pubkey_str.strip() + "\n")
+    return dest
+
+
+def resolve_pubkey_file(vay, name) -> str:
+    """Usable -pubkey-file path for a [vaydns] dict.
+
+    Existing pubkey_file wins; otherwise an inline pubkey string is
+    materialized to cfgs/vaydns/. Returns "" when neither is available.
+    """
+    path = str((vay or {}).get("pubkey_file", "")).strip()
+    if path and path not in ("None", "—") and os.path.exists(path):
+        return path
+    pubkey = str((vay or {}).get("pubkey", "")).strip()
+    if pubkey and pubkey not in ("None", "—"):
+        return materialize_pubkey(pubkey, name)
+    return ""
 
 
 def activate_vaydns_config(config, config_dict):

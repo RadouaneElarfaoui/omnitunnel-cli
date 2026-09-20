@@ -19,6 +19,8 @@ from src.vaydns import (
     find_vaydns_binary,
     activate_vaydns_config,
     store_pubkey_file,
+    materialize_pubkey,
+    resolve_pubkey_file,
     generate_vaydns_singbox_config,
     BALANCE_TAG,
     DEFAULT_TCP,
@@ -83,6 +85,39 @@ class TestVaydnsLink(unittest.TestCase):
         self.assertNotIn("instances=", link)
         self.assertTrue(is_vaydns_uri(link))
 
+    def test_inline_pubkey_string(self):
+        key = "ssh-ed25519 AAAAtestkey user@host"
+        link = ("vaydns://alice:pw@vay.krel.qzz.io?pubkey=" +
+                __import__("urllib.parse", fromlist=["quote"]).quote(key, safe="") +
+                "#K")
+        d, remark = parse_vaydns_uri(link)
+        self.assertEqual(d["vaydns"]["pubkey"], key)
+        self.assertEqual(d["vaydns"]["pubkey_file"], "")
+        d2, _ = parse_vaydns_uri(vaydns_config_to_uri(d, remark))
+        self.assertEqual(d2, d)
+
+    def test_resolve_pubkey(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            real = os.path.join(tmp, "server.pub")
+            with open(real, "w", encoding="utf-8") as f:
+                f.write("ssh-ed25519 AAAAreal")
+            # existing file wins over inline string
+            got = resolve_pubkey_file(
+                {"pubkey_file": real, "pubkey": "ssh-ed25519 AAAAinline"}, "X")
+            self.assertEqual(got, real)
+            # inline string materializes to cfgs/vaydns/
+            got = resolve_pubkey_file({"pubkey": "ssh-ed25519 AAAAinline"}, "Test Resolve 9")
+            try:
+                self.assertTrue(got.endswith(".pub"))
+                with open(got, encoding="utf-8") as f:
+                    self.assertEqual(f.read(), "ssh-ed25519 AAAAinline\n")
+            finally:
+                os.remove(got)
+            # neither → ""
+            self.assertEqual(resolve_pubkey_file({}, "X"), "")
+            self.assertEqual(
+                resolve_pubkey_file({"pubkey_file": "/nonexistent/x.pub"}, "X"), "")
+
     def test_export_needs_domain(self):
         with self.assertRaises(ValueError):
             vaydns_config_to_uri({"vaydns": {}, "ssh": {}})
@@ -112,10 +147,14 @@ class TestVaydnsRuntime(unittest.TestCase):
             try:
                 os.environ["PATH"] = tmp
                 self.assertEqual(find_vaydns_binary(), stub)
-                os.environ["PATH"] = tempfile.mkdtemp()
-                self.assertIsNone(find_vaydns_binary())
             finally:
                 os.environ["PATH"] = old_path
+
+    def test_find_binary_missing(self):
+        from unittest import mock
+        with mock.patch("shutil.which", return_value=None), \
+             mock.patch("os.path.exists", return_value=False):
+            self.assertIsNone(find_vaydns_binary())
 
     def test_spawn_and_stop_with_stub(self):
         with tempfile.TemporaryDirectory() as tmp:
