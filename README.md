@@ -23,7 +23,10 @@
 # 1. Sing-Box LX engine (default; includes XHTTP transport)
 curl -fsSL https://raw.githubusercontent.com/RadouaneElarfaoui/omnitunnel-cli/main/install-singbox-lx.sh | sudo bash
 
-# 2. OmniTunnel CLI
+# 2. VayDNS client (for vaydns mode)
+sudo wget -O /usr/local/bin/vaydns-client https://github.com/kunshakolime/vaydns-sr/releases/download/v0.3.0/vaydns-client-linux-amd64 && sudo chmod +x /usr/local/bin/vaydns-client
+
+# 3. OmniTunnel CLI
 wget -O /tmp/omnitunnel-cli_2.5.deb https://github.com/RadouaneElarfaoui/omnitunnel-cli/releases/download/v2.5/omnitunnel-cli_2.5.deb && sudo apt install -y /tmp/omnitunnel-cli_2.5.deb
 ```
 
