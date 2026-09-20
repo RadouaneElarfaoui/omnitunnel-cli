@@ -183,6 +183,10 @@ class TestVaydnsConfig(unittest.TestCase):
         self.assertEqual(len(groups), 1)
         self.assertEqual(groups[0]["outbounds"],
                          ["vaydns-ssh-1", "vaydns-ssh-2"])
+        # true rotation, not lowest-latency pinning
+        self.assertEqual(groups[0]["mode"], "round_robin")
+        self.assertEqual(groups[0]["balancer"]["pool"], 2)
+        self.assertEqual(groups[0]["balancer"]["sticky_hash"], ["none"])
         self.assertEqual(cfg["route"]["final"], BALANCE_TAG)
         self.assertEqual(cfg["dns"]["servers"][0]["detour"], BALANCE_TAG)
         # TUN by default

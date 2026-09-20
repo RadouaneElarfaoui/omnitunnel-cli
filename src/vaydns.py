@@ -14,10 +14,14 @@ config with one `ssh` outbound per backend behind a single balancing
 group, so traffic spreads across all instances.
 
  balancing group:
-    sing-box(-lx) 1.14 has no `loadbalance` outbound type (probed:
-    `unknown outbound type: loadbalance`), so the group is a `urltest`
-    over the N ssh outbounds — same effect (auto health-check +
-    lowest-latency pick), one constant flip if a future build adds it.
+    `type: loadbalance` is a brand-new upstream PR (post-1.14.1: strategies
+    `round-robin`/`least-connections`/`source-hash`/`consistent-hash` — note
+    hyphens, not `round_robin`), so no released binary — including
+    sing-box-lx 1.14.1 — decodes it (probed: `unknown outbound type`).
+    The lx fork instead extends `urltest` with `mode: round_robin` plus a
+    `balancer` (pool/sticky_hash), which is what we emit: true per-connection
+    rotation over all backends. If the fork ever rebases onto a `loadbalance`
+    type, only `balance_group_outbound()` needs to change.
 
 Format:
     vaydns://username:password@domain?params#Remark
@@ -53,10 +57,9 @@ DEFAULT_BASE_PORT = 2222
 LISTEN_HOST = "127.0.0.1"
 
 BALANCE_TAG = "vaydns-balance"
-BALANCE_GROUP_TYPE = "urltest"  # no `loadbalance` type in sing-box(-lx) 1.14
+BALANCE_GROUP_TYPE = "urltest"  # + round_robin mode: the fork's loadbalancer
 BALANCE_URL = "https://www.gstatic.com/generate_204"
 BALANCE_INTERVAL = "1m"
-BALANCE_TOLERANCE = 50
 
 PIDFILE_PATTERN = "/tmp/omnitunnel-vaydns-*.pid"
 
@@ -291,14 +294,22 @@ def ssh_backend_outbound(tag, listen_port, username, password) -> dict:
 
 
 def balance_group_outbound(tags) -> dict:
-    """Balancing group over the backend tags (see module docstring)."""
+    """True round-robin rotation over the backend tags (see module docstring).
+
+    pool covers every backend (small-N: all health-checked each interval);
+    stickiness off so connections actually spread instead of pinning.
+    """
     return {
         "type": BALANCE_GROUP_TYPE,
         "tag": BALANCE_TAG,
         "outbounds": list(tags),
         "url": BALANCE_URL,
         "interval": BALANCE_INTERVAL,
-        "tolerance": BALANCE_TOLERANCE,
+        "mode": "round_robin",
+        "balancer": {
+            "pool": len(tags),
+            "sticky_hash": ["none"],
+        },
     }
 
 
