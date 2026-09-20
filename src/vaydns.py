@@ -65,6 +65,8 @@ BALANCE_INTERVAL = "1m"
 
 PIDFILE_PATTERN = "/tmp/omnitunnel-vaydns-*.pid"
 
+DEFAULT_WAIT_SECS = 30
+
 
 def is_vaydns_uri(uri: str) -> bool:
     return uri.strip().lower().startswith("vaydns://")
@@ -286,6 +288,42 @@ def stop_clients(ports=None):
             pass
 
 
+def wait_for_backends(ports, timeout=None) -> list:
+    """Block until every backend serves an SSH banner, or timeout.
+
+    The DNS tunnel needs seconds to establish after spawn; starting
+    sing-box earlier means failed dials and an empty balance group.
+    Returns the subset of ports that never came up (empty = all ready).
+    """
+    import socket
+    import time
+    if timeout is None:
+        try:
+            timeout = int(os.environ.get("OMNI_VAYDNS_WAIT_SECS", "") or DEFAULT_WAIT_SECS)
+        except ValueError:
+            timeout = DEFAULT_WAIT_SECS
+    deadline = time.time() + max(1, timeout)
+    pending = [int(p) for p in ports]
+    while pending:
+        for port in list(pending):
+            try:
+                s = socket.create_connection((LISTEN_HOST, port), timeout=2)
+                try:
+                    s.settimeout(2)
+                    banner = s.recv(64)
+                finally:
+                    s.close()
+                if banner.startswith(b"SSH-"):
+                    pending.remove(port)
+            except OSError:
+                pass
+        if pending:
+            if time.time() >= deadline:
+                break
+            time.sleep(0.5)
+    return pending
+
+
 # ---- sing-box config -------------------------------------------------------
 
 def ssh_backend_outbound(tag, listen_port, username, password) -> dict:
@@ -347,6 +385,10 @@ def generate_vaydns_singbox_config(username, password, listen_ports,
         outbounds=outbounds,
     )
     cfg["route"]["final"] = BALANCE_TAG
+    # ssh outbounds are TCP-only: UDP (QUIC, etc.) has no carrier, so reject
+    # it fast instead of spamming "missing supported outbound" — clients fall
+    # back to TCP. DNS:53 is hijacked to DoH above before this rule hits.
+    cfg["route"]["rules"].append({"network": "udp", "action": "reject"})
     return apply_output_mode(
         cfg, output_mode=output_mode,
         socks_in_port=socks_in_port, http_in_port=http_in_port,

@@ -114,7 +114,8 @@ elif mode == 'vaydns':
     # VayDNS: spawn N backend clients first (fail closed without binary /
     # pubkey), then build the ssh+balance config over their listen ports.
     from src.vaydns import (generate_vaydns_singbox_config, allocate_vaydns_ports,
-                            spawn_clients, find_vaydns_binary, VAYDNS_INSTALL_HINT,
+                            spawn_clients, stop_clients, wait_for_backends,
+                            find_vaydns_binary, VAYDNS_INSTALL_HINT,
                             resolve_pubkey_file)
     binary = find_vaydns_binary()
     if not binary:
@@ -140,6 +141,14 @@ elif mode == 'vaydns':
         log_level = 'warn'
     vaydns_ports = allocate_vaydns_ports(instances)
     spawn_clients(binary, tcp, pubkey, domain, vaydns_ports)
+    # DNS handshake takes seconds — wait for SSH banners so sing-box never
+    # starts against dead backends (empty balance group + check timeouts).
+    missing = wait_for_backends(vaydns_ports)
+    if missing:
+        print('✕ vaydns-client backend(s) never came up:', ', '.join('127.0.0.1:%s' % p for p in missing), flush=True)
+        print('  Check domain / shared key / server, then retry (wait: OMNI_VAYDNS_WAIT_SECS)', flush=True)
+        stop_clients(vaydns_ports)
+        raise SystemExit(1)
     with open('$VAYDNS_PORTS_FILE', 'w', encoding='utf-8') as f:
         f.write(' '.join(str(p) for p in vaydns_ports))
     ports_str = ', 127.0.0.1:'.join(str(p) for p in vaydns_ports)

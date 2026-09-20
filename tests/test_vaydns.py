@@ -228,6 +228,10 @@ class TestVaydnsConfig(unittest.TestCase):
         self.assertEqual(groups[0]["balancer"]["sticky_hash"], ["none"])
         self.assertEqual(cfg["route"]["final"], BALANCE_TAG)
         self.assertEqual(cfg["dns"]["servers"][0]["detour"], BALANCE_TAG)
+        # ssh backends are TCP-only: UDP must reject fast, after hijack-dns
+        rules = cfg["route"]["rules"]
+        self.assertEqual(rules[0], {"action": "sniff"})
+        self.assertEqual(rules[-1], {"network": "udp", "action": "reject"})
         # TUN by default
         self.assertEqual(cfg["inbounds"][0]["type"], "tun")
 
@@ -237,6 +241,43 @@ class TestVaydnsConfig(unittest.TestCase):
             socks_in_port=1181, http_in_port=8180)
         kinds = sorted(o["type"] for o in cfg["inbounds"])
         self.assertEqual(kinds, ["http", "socks"])
+
+    def test_wait_for_backends(self):
+        import socket
+        import threading
+        from src.vaydns import wait_for_backends
+        from src.ports import find_free_port
+        port = find_free_port(27000)
+
+        def serve_once():
+            srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            srv.bind(("127.0.0.1", port))
+            srv.listen(1)
+            srv.settimeout(5)
+            try:
+                conn, _ = srv.accept()
+                conn.sendall(b"SSH-2.0-test\r\n")
+                conn.close()
+            except OSError:
+                pass
+            finally:
+                srv.close()
+
+        t = threading.Thread(target=serve_once, daemon=True)
+        t.start()
+        self.assertEqual(wait_for_backends([port], timeout=5), [])
+        # silent port (accepts, no banner) + closed port never clear
+        srv2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        srv2.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        port2 = find_free_port(port + 1)
+        srv2.bind(("127.0.0.1", port2))
+        srv2.listen(1)
+        try:
+            missing = wait_for_backends([port2, 27999], timeout=1)
+            self.assertEqual(sorted(missing), sorted([port2, 27999]))
+        finally:
+            srv2.close()
 
     def test_validates_on_lx(self):
         lx = find_singbox_lx_binary()
