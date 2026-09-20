@@ -17,6 +17,9 @@ cfgs/publickey.pem
 cfgs/singbox_config.json
 cfgs/singbox_config_*.json
 
+# VayDNS materialized keys (written at import/launch, never committed)
+cfgs/vaydns/*.pub
+
 # Ignore all profiles in cfgs/saved/ (keep folder via .gitkeep)
 cfgs/saved/*
 !cfgs/saved/.gitkeep
